@@ -160,7 +160,6 @@ public class ShockNode extends ShockData {
 	@JsonIgnore
 	public void getFile(final OutputStream file)
 			throws ShockHttpException, IOException, TokenExpiredException {
-		//TODO test
 		checkDeleted();
 		client.getFile(this, file);
 	}

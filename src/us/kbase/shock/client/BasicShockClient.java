@@ -230,7 +230,6 @@ public class BasicShockClient {
 	 */
 	public void getFile(final ShockNodeId id, final OutputStream file)
 			throws IOException, ShockHttpException, TokenExpiredException {
-		//TODO test
 		getFile(getNode(id), file);
 	}
 	
@@ -245,7 +244,6 @@ public class BasicShockClient {
 	 */
 	public void getFile(final ShockNode sn, final OutputStream file)
 			throws TokenExpiredException, IOException, ShockHttpException {
-		//TODO test
 		if (sn == null || file == null) {
 			throw new IllegalArgumentException(
 					"Neither the shock node nor the file may be null");
@@ -390,10 +388,7 @@ public class BasicShockClient {
 			final InputStream file, final Long filesize, final String filename)
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
-		//TODO test
-		if (file == null) {
-			return _addNode(attributes, null, null);
-		}
+		//TODO test after rewrite to eliminate filesize arg
 		if (filesize <= CHUNK_SIZE) {
 			final byte[] b = new byte[(int) filesize.longValue()];
 			final int read = read(file, b);

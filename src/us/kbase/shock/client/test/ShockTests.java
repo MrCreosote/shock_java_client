@@ -1,5 +1,6 @@
 package us.kbase.shock.client.test;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -275,7 +276,6 @@ public class ShockTests {
 				content.getBytes(StandardCharsets.UTF_8).length, name);
 	}
 	
-	@Ignore //TODO uncomment
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		long smallfilesize = 1001000000;
@@ -399,6 +399,35 @@ public class ShockTests {
 			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
 					is("Node has no file"));
 		}
+		try {
+			sn.getFile(null);
+			fail("called get file w/ null arg");
+		} catch (IllegalArgumentException ioe) {
+			assertThat("no file exc string incorrect", ioe.getLocalizedMessage(), 
+					is("Neither the shock node nor the file may be null"));
+		}
+		try {
+			bsc1.getFile(sn, new ByteArrayOutputStream());
+			fail("Got file from node w/o file");
+		} catch (ShockNoFileException snfe) {
+			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
+					is("Node has no file"));
+		}
+		try {
+			bsc1.getFile(sn.getId(), new ByteArrayOutputStream());
+			fail("Got file from node w/o file");
+		} catch (ShockNoFileException snfe) {
+			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
+					is("Node has no file"));
+		}
+		try {
+			bsc1.getFile(sn, null);
+			fail("called get file w/ null arg");
+		} catch (IllegalArgumentException ioe) {
+			assertThat("no file exc string incorrect", ioe.getLocalizedMessage(), 
+					is("Neither the shock node nor the file may be null"));
+		}
+		//can't test with sn == null since method call is ambiguous
 		sn.delete();
 	}
 	
@@ -413,11 +442,18 @@ public class ShockTests {
 					is("attributes may not be null"));
 		}
 		try {
-			bsc1.addNode(null, 3, "foo");  //TODO test filesize < 1
+			bsc1.addNode(null, 3, "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("file may not be null"));
+		}
+		try {
+			bsc1.addNode(new ByteArrayInputStream(new byte[2]), -1, "foo");
+			fail("called addNode with illegal value");
+		} catch (IllegalArgumentException npe) {
+			assertThat("npe message incorrect", npe.getMessage(),
+					is("filesize must be > 0"));
 		}
 		try {
 			addNode(bsc1, "foo", null);

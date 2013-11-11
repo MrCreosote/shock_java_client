@@ -1,0 +1,28 @@
+shock_java_client repo
+
+OVERVIEW
+-----------------------------------------
+A basic java client for the Shock service. Supports node creation, deletion and
+retrieval of a subset of node data, streaming file up/download, viewing
+ACLs, and limited ACL modification.
+
+VERSION: 0.0.1 (Released 11/11/2013)
+-----------------------------------------
+
+shock_service commit: 931c60b76c00fc9229a338b51905cfbea7d796b7
+
+NEW FEATURES:
+- First release.
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- N/A
+
+ANTICIPATED FUTURE DEVELOPMENTS:
+- Remove need to specify the file size when uploading a file.
+- Use KBase user name rather than email for ACLs.
+- Copy a node when Shock supports it.
+- ACLs via KBase groups when Shock supports it.
+
+ISSUES:
+Since the addNode(file) methods are going to be rewritten in the next release,
+test coverage is not complete.
