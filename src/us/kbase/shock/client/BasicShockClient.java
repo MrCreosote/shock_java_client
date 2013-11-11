@@ -48,8 +48,6 @@ import us.kbase.shock.client.exceptions.UnvalidatedEmailException;
  */
 public class BasicShockClient {
 	
-	//TODO move to own repo
-	
 	private final URI baseurl;
 	private final URI nodeurl;
 	private final HttpClient client = new DefaultHttpClient();

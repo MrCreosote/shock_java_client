@@ -18,8 +18,6 @@
     <include name="apache_commons/http/httpclient-4.2.5.jar"/>
     <include name="apache_commons/http/httpcore-4.2.4.jar"/>
     <include name="apache_commons/http/httpmime-4.2.5.jar"/>
-    <include name="easystream/easystream-1.2.13.jar"/>
-    <include name="slf4j/slf4j-api-1.6.1.jar"/>
     <include name="kbase/auth/kbase-auth-1380919426-d35c17d.jar"/>
     <include name="jackson/jackson-annotations-2.2.3.jar"/>
     <include name="jackson/jackson-core-2.2.3.jar"/>
@@ -27,6 +25,8 @@
   </fileset>
 
   <fileset dir="${jardir}" id="testlib">
+    <include name="easystream/easystream-1.2.13.jar"/>
+    <include name="slf4j/slf4j-api-1.6.1.jar"/>
     <include name="junit/junit-4.9.jar"/>
     <include name="apache_commons/commons-codec-1.8.jar"/>
     <include name="apache_commons/commons-io-2.4.jar"/>

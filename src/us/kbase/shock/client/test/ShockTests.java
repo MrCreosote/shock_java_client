@@ -165,7 +165,6 @@ public class ShockTests {
 		
 	}
 
-	//@Ignore //TODO unignore when shock is updated
 	@Test
 	public void addGetDeleteNodeBasic() throws Exception {
 		ShockNode sn = bsc1.addNode();
@@ -175,7 +174,6 @@ public class ShockTests {
 		getDeletedNode(sn.getId());
 	}
 	
-	//@Ignore //TODO unignore when shock is updated
 	@Test
 	public void getNodeBadId() throws Exception {
 		try {
@@ -197,7 +195,6 @@ public class ShockTests {
 		}
 	}
 	
-	//@Ignore //TODO unignore when shock is updated
 	@Test
 	public void deleteByNode() throws Exception {
 		ShockNode sn = bsc1.addNode();
@@ -278,7 +275,7 @@ public class ShockTests {
 				content.getBytes(StandardCharsets.UTF_8).length, name);
 	}
 	
-	@Ignore //TODO uncomment when in separate repo
+	@Ignore //TODO uncomment
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		long smallfilesize = 1001000000;
