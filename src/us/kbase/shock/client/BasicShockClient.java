@@ -285,7 +285,7 @@ public class BasicShockClient {
 	}
 	
 	/**
-	 * Creates an node on the shock server with user-specified attributes.
+	 * Creates a node on the shock server with user-specified attributes.
 	 * @param attributes the user-specified attributes.
 	 * @return a shock node object.
 	 * @throws IOException if an IO problem occurs.
@@ -332,7 +332,7 @@ public class BasicShockClient {
 	}
 	
 	/**
-	 * Creates an node on the shock server with user-specified attributes and 
+	 * Creates a node on the shock server with user-specified attributes and 
 	 * a file.
 	 * @param attributes the user-specified attributes.
 	 * @param file the file data.

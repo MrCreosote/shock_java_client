@@ -76,7 +76,7 @@ public class ShockNode extends ShockData {
 	 * exception after this method is called.
 	 * @throws ShockHttpException if the shock server couldn't delete the node.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws ExpiredTokenException if the client's token has expired.
+	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	public void delete() throws ShockHttpException, IOException,
 			TokenExpiredException {
@@ -91,7 +91,7 @@ public class ShockNode extends ShockData {
 	 * @return the ACLs.
 	 * @throws ShockHttpException if the shock server cannot retrieve the ACLs.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws ExpiredTokenException if the client's token has expired.
+	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
 	public ShockACL getACLs() throws ShockHttpException, IOException,

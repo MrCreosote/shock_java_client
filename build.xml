@@ -1,165 +1,73 @@
-<project name="Workspace Service" default="test" basedir=".">
+<project name="Shock Java Client" default="test" basedir=".">
 
   <description>
-      Build file for the Workspace Service
+      Build file for the Shock Java Client
   </description>
 
   <!-- set global properties for this build -->
-  <property name="package" value="workspace service"/>
+  <property name="package" value="shock java client"/>
   <property name="src" location="src"/>
-  <property name="common-src" location="../java_common/src"/>
-  <property name="lib" location="lib"/>
-  <property name="dist" location="dist"/>
-  <property name="test" location="test"/>
+  <property name="src-common" location="../java_common/src"/>
   <property name="jardir" location="../jars/lib/jars/"/>
   <property name="classes" location="classes"/>
-  <property name="jar.file" value="WorkspaceService.jar"/>
-  <property name="war.file" value="WorkspaceService.war"/>
-  <property name="clientjar.file" value="WorkspaceClient.jar"/>
-  <property name="war.dir" value="war"/>
-
-  <fileset dir="${jardir}" id="serverlib">
-    <include name="ini4j/ini4j-0.5.2.jar"/>
-    <include name="jetty/jetty-all-7.0.0.jar"/>
-    <include name="jna/jna-3.4.0.jar"/>
-    <include name="servlet/servlet-api-2.5.jar"/>
-    <include name="syslog4j/syslog4j-0.9.46.jar"/>
-  </fileset>
-
-  <fileset dir="${jardir}" id="clientserverlib">
-    <include name="junit/junit-4.9.jar"/>
-    <include name="kbase/auth/kbase-auth-1380919426-d35c17d.jar"/>
-    <include name="jackson/jackson-annotations-2.2.3.jar"/>
-    <include name="jackson/jackson-core-2.2.3.jar"/>
-    <include name="jackson/jackson-databind-2.2.3.jar"/>
-  </fileset>
+  <property name="docs" location="docs"/>
 
   <fileset dir="${jardir}" id="shocklib">
+    <include name="apache_commons/commons-lang3-3.1.jar"/>
     <include name="apache_commons/commons-logging-1.1.1.jar"/>
     <include name="apache_commons/http/httpclient-4.2.5.jar"/>
     <include name="apache_commons/http/httpcore-4.2.4.jar"/>
     <include name="apache_commons/http/httpmime-4.2.5.jar"/>
     <include name="easystream/easystream-1.2.13.jar"/>
     <include name="slf4j/slf4j-api-1.6.1.jar"/>
+    <include name="kbase/auth/kbase-auth-1380919426-d35c17d.jar"/>
+    <include name="jackson/jackson-annotations-2.2.3.jar"/>
+    <include name="jackson/jackson-core-2.2.3.jar"/>
+    <include name="jackson/jackson-databind-2.2.3.jar"/>
   </fileset>
-	
-  <fileset dir="${jardir}" id="applicationlib">
-    <include name="kbase/kidl/kbase-kidl-parser2.jar"/>
+
+  <fileset dir="${jardir}" id="testlib">
+    <include name="junit/junit-4.9.jar"/>
     <include name="apache_commons/commons-codec-1.8.jar"/>
     <include name="apache_commons/commons-io-2.4.jar"/>
-    <include name="apache_commons/commons-lang3-3.1.jar"/>
-    <include name="bson4jackson/bson4jackson-2.2.0-2.2.0.jar"/>
-    <include name="jongo/jongo-0.5-early-20130912-1506.jar"/>
-    <include name="mongo/mongo-java-driver-2.11.2.jar"/>
-  </fileset>
-
-  <fileset dir="${jardir}" id="validatorlib">
-    <include name="activation/activation-1.1.jar"/>
-    <include name="aopalliance/aopalliance-1.0.jar"/>
-    <include name="fge/btf-1.0.jar"/>
-    <include name="fge/jackson-coreutils-1.4.jar"/>
-    <include name="fge/json-schema-core-1.1.8.jar"/>
-    <include name="fge/json-schema-validator-2.1.7.jar"/>
-    <include name="fge/json-patch-1.3.jar"/>
-    <include name="fge/msg-simple-0.9.jar"/>
-    <include name="fge/uri-template-0.7.jar"/>
-    <include name="google/guava-14.0.1.jar"/>
-    <include name="google/guice-3.0.jar"/>
-    <include name="google/jsr305-2.0.1.jar"/>
-    <include name="google/libphonenumber-5.6.jar"/>
-    <include name="inject/javax.inject-1.jar"/>
-    <include name="joda/joda-time-2.2.jar"/>
-    <include name="mailapi/mailapi-1.4.3.jar"/>
-    <include name="mozilla/rhino-1.7R.jar"/>
-    <include name="testng/testng-6.8.5.jar"/>
   </fileset>
 	
-  <union id="serverside">
-    <fileset refid="serverlib"/>
-    <fileset refid="clientserverlib"/>
+  <union id="shocktests">
     <fileset refid="shocklib"/>
-    <fileset refid="applicationlib"/>
-    <fileset refid="validatorlib"/>
+    <fileset refid="testlib"/>
   </union>
 
-  <fileset id="client-jdoc-files" dir="${src}/us/kbase" defaultexcludes="yes">
-      <include name="workspace/*.java"/>
-      <exclude name="workspace/WorkspaceServer.java"/>
-      <include name="common/service/*.java"/>
-      <exclude name="common/service/JsonServer*"/>
-      <exclude name="common/service/JacksonTupleModule.java"/>
-      <exclude name="common/service/JsonClientCaller.java"/>
-  </fileset>
-
-  <fileset id="client-class-files" dir="${classes}" defaultexcludes="yes">
-    <include name="us/kbase/workspace/*.class"/>
-    <exclude name="us/kbase/workspace/WorkspaceServer.class"/>
-    <include name="us/kbase/common/service/*.class"/>
-    <exclude name="us/kbase/common/service/JsonServer*"/>
+  <fileset id="client-jdoc-files" dir="${src}" defaultexcludes="yes">
+    <exclude name="**/test/*"/>
   </fileset>
 
   <path id="compile.classpath">
-    <union refid="serverside"/>
-  </path>
-
-  <path id="test.client.import.classpath">
-    <fileset refid="clientserverlib"/>
-    <fileset file="${dist}/client/${clientjar.file}"/>
-    <pathelement path="${test}"/>
-  </path>
-
-  <path id="test.classpath">
-    <path refid="compile.classpath"/>
-    <fileset file="${dist}/${jar.file}"/>
+    <union refid="shocktests"/>
   </path>
 
   <target name="init" description="make directories">
     <!-- Create the output directory structure-->
     <mkdir dir="${classes}"/>
-    <mkdir dir="${dist}"/>
+    <mkdir dir="${docs}"/>
   </target>
 
   <target name="compile" depends="init" description="compile the source">
+    <fail unless="compile.jarfile" message="property compile.jarfile not set."/>
     <!-- Compile class files-->
     <javac destdir="${classes}" includeantruntime="false" target="1.6" source="1.6"
       debug="true" classpathref="compile.classpath">
       <src path="${src}"/>
-      <src path="${common-src}"/>
+      <src path="${src-common}"/>
+      <include name="us/kbase/shock/**/*"/>
+      <include name="us/kbase/common/test/TestException.java"/>
     </javac>
-    <!-- Copy resource files-->
-    <copy todir="${classes}">
-      <fileset dir="${src}">
-        <patternset>
-          <include name="**/*.properties"/>
-          <include name="**/*.spec"/>
-          <include name="**/*.instance.*"/>
-        </patternset>
-      </fileset>
-    </copy>
     <!-- Make main jar file-->
-    <jar destfile="${dist}/${jar.file}" basedir="${classes}"/>
-    <!-- make the client jar-->
-    <jar destfile="${dist}/client/${clientjar.file}">
-      <fileset refid="client-class-files"/>
-    </jar>
+    <jar destfile="${compile.jarfile}" basedir="${classes}"/>
   </target>
 
-  <target name="buildwar" description="build the WAR file. Assumes compile has been run">
-    <!-- make the war file for the server-->
-    <mkdir dir="${war.dir}/lib"/>
-    <copy todir="${war.dir}/lib/" flatten="true">
-      <union refid="serverside"/>
-    </copy>
-    <war destfile="${dist}/${war.file}" webxml="${war.dir}/web.xml">
-      <classes dir="${classes}"/>
-      <lib dir="${war.dir}/lib/"/>
-    </war>
-    <delete dir="${war.dir}/lib"/>
-  </target>
-
-  <target name="javadoc" description="build javadocs">
+  <target name="javadoc" depends="init" description="build javadocs">
     <javadoc access="protected" author="false" classpathref="compile.classpath"
-      destdir="docs/javadoc" nodeprecated="false" nodeprecatedlist="false"
+      destdir="${docs}/javadoc" nodeprecated="false" nodeprecatedlist="false"
       noindex="false" nonavbar="false" notree="false"
       source="1.7" splitindex="true" use="true" version="true">
       <link href="http://download.oracle.com/javase/7/docs/api/"/>
@@ -170,12 +78,8 @@
   </target>
 
   <target name="test" depends="compile" description="run tests">
+    <fail unless="compile.jarfile" message="property compile.jarfile not set."/>
     <fail unless="test.shock.url" message="property test.shock.url not set."/>
-    <fail unless="test.mongo.host" message="property test.mongo.host not set."/>
-    <fail unless="test.mongo.db1" message="property test.mongo.db1 not set."/>
-    <fail unless="test.mongo.db2" message="property test.mongo.db2 not set."/>
-    <fail unless="test.mongo.db.types1" message="property test.mongo.db.types1 not set."/>
-    <fail unless="test.mongo.db.types2" message="property test.mongo.db.types2 not set."/>
     <fail unless="test.user1" message="property test.user1 not set."/>
     <fail unless="test.pwd1" message="property test.pwd1 not set."/>
     <fail unless="test.user2" message="property test.user2 not set."/>
@@ -183,58 +87,26 @@
     <fail unless="test.user.noemail" message="property test.user.noemail not set."/>
     <fail unless="test.pwd.noemail" message="property test.pwd.noemail not set."/>
     <echo message="starting ${package} tests"/>
-    <condition property="test.mongo.user" else="" >
-      <isset property="test.mongo.user" />
-    </condition>
-    <condition property="test.mongo.pwd" else="" >
-      <isset property="test.mongo.pwd" />
-    </condition>
-    <junit fork="yes" maxmemory="12G" failureproperty="test.failed">
-      <classpath refid="test.classpath"/>
+    <junit failureproperty="test.failed">
+      <classpath path="${compile.jarfile}"/>
+      <classpath refid="compile.classpath"/>
       <formatter type="plain" usefile="false" />
       <sysproperty key="test.shock.url" value="${test.shock.url}"/>
-      <sysproperty key="test.mongo.host" value="${test.mongo.host}"/>
-      <sysproperty key="test.mongo.db1" value="${test.mongo.db1}"/>
-      <sysproperty key="test.mongo.db2" value="${test.mongo.db2}"/>
-      <sysproperty key="test.mongo.db.types1" value="${test.mongo.db.types1}"/>
-      <sysproperty key="test.mongo.db.types2" value="${test.mongo.db.types2}"/>
-      <sysproperty key="test.mongo.user" value="${test.mongo.user}"/>
-      <sysproperty key="test.mongo.pwd" value="${test.mongo.pwd}"/>
       <sysproperty key="test.user1" value="${test.user1}"/>
       <sysproperty key="test.pwd1" value="${test.pwd1}"/>
       <sysproperty key="test.user2" value="${test.user2}"/>
       <sysproperty key="test.pwd2" value="${test.pwd2}"/>
       <sysproperty key="test.user.noemail" value="${test.user.noemail}"/>
       <sysproperty key="test.pwd.noemail" value="${test.pwd.noemail}"/>
-      <test name="us.kbase.typedobj.tests.TypeDefs"/>
-      <test name="us.kbase.typedobj.tests.TestBasicValidation"/>
-      <test name="us.kbase.typedobj.tests.TestIdProcessing"/>
-      <test name="us.kbase.typedobj.tests.TestWsSubsetExtraction"/>
-      <test name="us.kbase.typedobj.db.test.TypeRegisteringTest"/>
       <test name="us.kbase.shock.client.test.ShockTests"/>
-      <test name="us.kbase.workspace.test.database.mongo.ShockBackendTest"/>
-      <test name="us.kbase.workspace.test.database.mongo.GridFSBackendTest"/>
-      <test name="us.kbase.workspace.test.workspaces.TestWorkspaces"/>
-      <test name="us.kbase.workspace.test.kbase.JSONRPCLayerTest"/>
     </junit>
     <fail message="Test failure detected, check test results." if="test.failed" />
-  </target>
-	
-  <target name="test_client_import" depends="compile" description="make sure the client jar contains all files">
-    <javac destdir="${test}" srcdir="${test}" includeantruntime="false" target="1.6" source="1.6"
-          debug="true" classpathref="test.client.import.classpath" />
-    <junit>
-      <classpath refid="test.client.import.classpath"/>
-      <formatter type="plain" usefile="false" />
-      <test name="TestClientImport"/>
-    </junit>
   </target>
 
   <target name="clean" description="clean up" >
     <!-- Clean up internal temporary files and folders-->
     <delete dir="${classes}"/>
-    <delete dir="${dist}"/>
-    <!--<delete dir="${test}"/>-->
+    <delete dir="${docs}"/>
   </target>
 </project>
 
