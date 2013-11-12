@@ -301,8 +301,6 @@ public class BasicShockClient {
 	/**
 	 * Creates a node on the shock server containing a file.
 	 * @param file the file data.
-	 * @param filesize the length of the file. If the file length is not
-	 * accurate, an error will be thrown.
 	 * @param filename the name of the file.
 	 * @return a shock node object.
 	 * @throws IOException if an IO problem occurs.
@@ -310,19 +308,15 @@ public class BasicShockClient {
 	 * @throws TokenExpiredException if the client authorization token has
 	 * expired.
 	 */
-	public ShockNode addNode(final InputStream file, final long filesize,
-			final String filename)
+	public ShockNode addNode(final InputStream file, final String filename)
 			throws IOException, ShockHttpException, TokenExpiredException {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
 		}
-		if (filesize < 1) {
-			throw new IllegalArgumentException("filesize must be > 0");
-		}
 		if (filename == null) {
 			throw new IllegalArgumentException("filename may not be null");
 		}
-		return _addNode(null, file, filesize, filename);
+		return _addNodeStreaming(null, file, filename);
 	}
 	
 	/**
@@ -330,8 +324,6 @@ public class BasicShockClient {
 	 * a file.
 	 * @param attributes the user-specified attributes.
 	 * @param file the file data.
-	 * @param filesize the length of the file. If the file length is not
-	 * accurate, an error will be thrown.
 	 * @param filename the name of the file.
 	 * @return a shock node object.
 	 * @throws IOException if an IO problem occurs.
@@ -342,7 +334,7 @@ public class BasicShockClient {
 	 * expired.
 	 */
 	public ShockNode addNode(final Map<String, Object> attributes,
-			final InputStream file, final long filesize, final String filename)
+			final InputStream file, final String filename)
 			throws IOException, ShockHttpException,
 			JsonProcessingException, TokenExpiredException {
 		if (attributes == null) {
@@ -351,13 +343,10 @@ public class BasicShockClient {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
 		}
-		if (filesize < 1) {
-			throw new IllegalArgumentException("filesize must be > 0");
-		}
 		if (filename == null) {
 			throw new IllegalArgumentException("filename may not be null");
 		}
-		return _addNode(attributes, file, filesize, filename);
+		return _addNodeStreaming(attributes, file, filename);
 	}
 	
 	private ShockNode _addNode(final Map<String, Object> attributes,
@@ -382,35 +371,22 @@ public class BasicShockClient {
 		return sn;
 	}
 	
-	private ShockNode _addNode(final Map<String, Object> attributes,
-			final InputStream file, final Long filesize, final String filename)
+	private ShockNode _addNodeStreaming(final Map<String, Object> attributes,
+			final InputStream file, final String filename)
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
 		//TODO test after rewrite to eliminate filesize arg
-		if (filesize <= CHUNK_SIZE) {
-			final byte[] b = new byte[(int) filesize.longValue()];
-			final int read = read(file, b);
-			if (read < 1) {
-				throw new IllegalArgumentException("No data provided");
-			}
-			if (read != filesize) {
-				throw new IllegalArgumentException("Incorrect file size: "
-						+ filesize);
-			}
-			final byte[] foo = new byte[1];
-			if (file.read(foo) > 0) {
-				throw new IllegalArgumentException("Incorrect file size: "
-						+ filesize);
-			}
-			return _addNode(attributes, b, filename);
+		byte[] b = new byte[CHUNK_SIZE];
+		int read = read(file, b);
+		if (read < CHUNK_SIZE) {
+			return _addNode(attributes, Arrays.copyOf(b, read), filename);
 		}
-		int chunks = new Double(Math.ceil((float) filesize /
-				CHUNK_SIZE)).intValue();
+		int chunks = 1;
 		ShockNode sn;
 		{
 			final HttpPost htp = new HttpPost(nodeurl);
 			final MultipartEntity mpe = new MultipartEntity();
-			mpe.addPart("parts", new StringBody("" + chunks));
+			mpe.addPart("parts", new StringBody("unknown"));
 			if (attributes != null) {
 				final byte[] attribs = mapper.writeValueAsBytes(attributes);
 				mpe.addPart("attributes", new ByteArrayBody(attribs, ATTRIBFILE));
@@ -419,30 +395,26 @@ public class BasicShockClient {
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}
 		final URI targeturl = nodeurl.resolve(sn.getId().getId());
-		for (int i = 0; i < chunks; i++) {
+		while (read > 0) {
 			final HttpPut htp = new HttpPut(targeturl);
-			byte[] b = new byte[CHUNK_SIZE]; //can this be moved outside the loop safely?
-			final int read = read(file, b);
-			if (read < 1) {
-				sn.delete();
-				throw new IllegalArgumentException(
-						"reached EOF prior to filesize of " + filesize);
-			}
 			if (read < CHUNK_SIZE) {
 				b = Arrays.copyOf(b, read);
 			}
 			final MultipartEntity mpe = new MultipartEntity();
-			mpe.addPart("" + (i + 1), new ByteArrayBody(b, filename));
+			mpe.addPart("" + chunks, new ByteArrayBody(b, filename));
 			htp.setEntity(mpe);
 			processRequest(htp, ShockNodeResponse.class);
+			b = new byte[CHUNK_SIZE];
+			read = read(file, b);
+			chunks++;
 		}
-		final byte[] foo = new byte[1];
-		if (file.read(foo) > 0) {
-			sn.delete();
-			throw new IllegalArgumentException(
-					"filesize greater than provided filesize: " + filesize);
+		{
+			final HttpPut htp = new HttpPut(targeturl);
+			final MultipartEntity mpe = new MultipartEntity();
+			mpe.addPart("parts", new StringBody("close"));
+			htp.setEntity(mpe);
+			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}
-		sn = getNode(sn.getId());
 		sn.addClient(this);
 		return sn;
 	}

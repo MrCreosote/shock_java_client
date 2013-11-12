@@ -1,6 +1,5 @@
 package us.kbase.shock.client.test;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -255,17 +254,17 @@ public class ShockTests {
 	private ShockNode addNode(BasicShockClient bsc, String content, String name)
 			throws Exception {
 		return bsc.addNode(new ReaderInputStream(new StringReader(content)),
-				content.getBytes(StandardCharsets.UTF_8).length, name);
+				name);
 	}
 	
 	private ShockNode addNode(BasicShockClient bsc, Map<String, Object> attribs,
 			String content, String name)
 			throws Exception {
 		return bsc.addNode(attribs, new ReaderInputStream(new StringReader(content)),
-				content.getBytes(StandardCharsets.UTF_8).length, name);
+				name);
 	}
 	
-	@Ignore
+//	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		long smallfilesize = 1001000000;
@@ -296,7 +295,7 @@ public class ShockTests {
 		Map<String, Object> attribs = new HashMap<String, Object>();
 		attribs.put("foo", "bar");
 
-		ShockNode sn = bsc1.addNode(attribs, isos, filesize, "somefile");
+		ShockNode sn = bsc1.addNode(attribs, isos, "somefile");
 		isos.close();
 		
 		OutputStreamToInputStream<String> osis =
@@ -432,18 +431,11 @@ public class ShockTests {
 					is("attributes may not be null"));
 		}
 		try {
-			bsc1.addNode(null, 3, "foo");
+			bsc1.addNode(null, "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("file may not be null"));
-		}
-		try {
-			bsc1.addNode(new ByteArrayInputStream(new byte[2]), -1, "foo");
-			fail("called addNode with illegal value");
-		} catch (IllegalArgumentException npe) {
-			assertThat("npe message incorrect", npe.getMessage(),
-					is("filesize must be > 0"));
 		}
 		try {
 			addNode(bsc1, "foo", null);
@@ -460,7 +452,7 @@ public class ShockTests {
 					is("attributes may not be null"));
 		}
 		try {
-			bsc1.addNode(attribs, null, 6, "foo");
+			bsc1.addNode(attribs, null, "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
