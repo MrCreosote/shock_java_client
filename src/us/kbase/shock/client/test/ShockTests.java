@@ -276,9 +276,31 @@ public class ShockTests {
 		sb.appendCodePoint(0x20AC);
 		Map<String, Object> attribs = new HashMap<String, Object>();
 		attribs.put("foobar", "barbaz");
+		String ch2 = new StringBuilder().appendCodePoint(0x0100).toString();
+		String ch3 = new StringBuilder().appendCodePoint(0x20AC).toString();
 		
 		ShockNode sn = writeFileToNode(attribs, sb.toString(), (chunksize - 1) / 9, "", "filename");
 		verifyStreamedNode(sn, attribs, sb.toString(), (chunksize - 1) / 9, "", "filename");
+		sn.delete();
+		
+		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, "~", "filename");
+		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, "~", "filename");
+		sn.delete();
+		
+		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, ch2, "filename");
+		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, ch2, "filename");
+		sn.delete();
+		
+		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename");
+		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename");
+		sn.delete();
+		
+		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename");
+		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename");
+		sn.delete();
+		
+		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename");
+		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename");
 		sn.delete();
 		
 	}
@@ -310,12 +332,11 @@ public class ShockTests {
 					size += read;
 					read = read(is, data);
 				}
+				assertThat("correct length of final string for node "
+						+ sn.getId().getId(), read, is(finallen));
 				if (finallen > 0) {
-					data = new byte[finallen];
-					read = read(is, data);
-					assertThat("file incorrect at pos " + size, 
-							new String(data, StandardCharsets.UTF_8),
-							is(last));
+					final String l = new String(Arrays.copyOf(data, finallen), StandardCharsets.UTF_8);
+					assertThat("file incorrect at pos " + size, l, is(last));
 					size += read;
 				}
 				data = new byte[1];
@@ -323,7 +344,6 @@ public class ShockTests {
 					fail("file is too long");
 				}
 				assertThat("correct file size for node " + sn.getId().getId(),
-						
 						size, is(filesize));
 				return null;
 			}
@@ -382,7 +402,7 @@ public class ShockTests {
 		return sn;
 	}
 
-//	@Ignore //TODO unignore
+//	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		long smallfilesize = 1001000000;
@@ -411,11 +431,8 @@ public class ShockTests {
 		String filefromnode = bos2.toString(StandardCharsets.UTF_8.name());
 		Set<String> digestTypes = snget.getFileInformation().getChecksumTypes();
 		assertTrue("has md5", digestTypes.contains("md5"));
-//		assertTrue("has sha1", digestTypes.contains("sha1"));
 		assertThat("unequal md5", snget.getFileInformation().getChecksum("md5"),
 				is(DigestUtils.md5Hex(content)));
-//		assertThat("unequal sha1", snget.getFileInformation().getChecksum("sha1"),
-//				is(DigestUtils.sha1Hex(content)));
 		try {
 			snget.getFileInformation().getChecksum("this is not a checksum type");
 			fail("got checksum type that doesn't exist");

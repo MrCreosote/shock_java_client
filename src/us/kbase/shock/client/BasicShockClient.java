@@ -3,6 +3,7 @@ package us.kbase.shock.client;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -252,8 +253,11 @@ public class BasicShockClient {
 		if (sn.getFileInformation().getSize() == 0) {
 			throw new ShockNoFileException(400, "Node has no file");
 		}
-		int chunks = new Double(Math.ceil((float)
-				sn.getFileInformation().getSize() / CHUNK_SIZE)).intValue();
+		final BigDecimal size = new BigDecimal(
+				sn.getFileInformation().getSize());
+		//if there are more than 2^32 chunks we're in big trouble
+		final int chunks = size.divide(new BigDecimal(CHUNK_SIZE))
+				.setScale(0, BigDecimal.ROUND_CEILING).intValueExact();
 		final URI targeturl = nodeurl.resolve(sn.getId().getId() +
 				DOWNLOAD_CHUNK);
 		for (int i = 0; i < chunks; i++) {
@@ -378,9 +382,6 @@ public class BasicShockClient {
 			final InputStream file, final String filename)
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
-		//TODO test after rewrite to eliminate filesize arg
-		//TODO test w/o attribs
-		//TODO test CS *1/2 -1, 0, +1
 		byte[] b = new byte[CHUNK_SIZE];
 		int read = read(file, b);
 		if (read < CHUNK_SIZE) {
