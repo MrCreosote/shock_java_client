@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.input.ReaderInputStream;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
@@ -405,19 +404,22 @@ public class ShockTests {
 //	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
-		long smallfilesize = 1001000000;
-		final long filesize = smallfilesize * 4;
+		int foo = 1; //shut up java
+		if (BasicShockClient.CHUNK_SIZE + foo != 100000001) {
+			throw new TestException("expected chunk size to be 100000000");
+		}
 		StringBuilder sb = new StringBuilder();
 		sb.append("abcd");
 		sb.appendCodePoint(0x20AC);
-		final int teststrlenUTF8 = 7; //filesize mod this must = 0
-		final long writes = filesize / teststrlenUTF8;
-		final String testString = sb.toString();
+		
+		StringBuilder last = new StringBuilder();
+		last.appendCodePoint(0x10310);
 		Map<String, Object> attribs = new HashMap<String, Object>();
 		attribs.put("foo", "bar");
-
-		ShockNode sn = writeFileToNode(attribs, testString, writes, "", "somefile");
-		verifyStreamedNode(sn, attribs, testString, writes, "", "somefile");
+		
+		final long writes = 571428571;
+		ShockNode sn = writeFileToNode(attribs, sb.toString(), writes, last.toString(), "somefile");
+		verifyStreamedNode(sn, attribs, sb.toString(), writes, last.toString(), "somefile");
 		bsc1.deleteNode(sn.getId());
 	}
 	
