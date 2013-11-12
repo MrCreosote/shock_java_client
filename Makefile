@@ -1,10 +1,21 @@
 ANT = ant
 
-VER := $(shell git rev-parse --short HEAD)
-
+GITCOMMIT := $(shell git rev-parse --short HEAD)
 EPOCH := $(shell date +%s)
+TAGS := $(shell git tag --contains $(GITCOMMIT))
+TAG := $(shell python internal/checktags.py $(TAGS))
 
-SHOCK-CLIENT-JAR = shock-client-$(EPOCH)-$(VER).jar
+FOO := $(findstring Two valid tags for this commit, $(TAG))
+
+ifneq ($(FOO), )
+$(error Tags are ambiguous for this commit: $(TAG))
+endif 
+
+SHOCK-CLIENT-JAR = shock-client-$(TAG).jar
+
+ifeq ($(TAG), )
+SHOCK-CLIENT-JAR = shock-client-$(EPOCH)-$(GITCOMMIT).jar
+endif
 
 # make sure our make test works
 .PHONY : test
