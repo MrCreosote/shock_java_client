@@ -32,12 +32,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import us.kbase.auth.AuthToken;
-import us.kbase.auth.AuthUser;
 import us.kbase.auth.TokenExpiredException;
 import us.kbase.shock.client.exceptions.InvalidShockUrlException;
 import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockNoFileException;
-import us.kbase.shock.client.exceptions.UnvalidatedEmailException;
 
 /**
  * A basic client for shock. Creating nodes, deleting nodes,
@@ -485,19 +483,18 @@ public class BasicShockClient {
 	 * @throws ShockHttpException if the node ACL could not be altered.
 	 * @throws TokenExpiredException if the client authorization token has
 	 * expired.
-	 * @throws UnvalidatedEmailException if the <code>user</code>'s email
-	 * address is unvalidated.
 	 */
-	public void setNodeReadable(final ShockNodeId id, final AuthUser user)
-			throws IOException, ShockHttpException,TokenExpiredException,
-			UnvalidatedEmailException {
-		if (!user.isEmailValidated()) {
-			throw new UnvalidatedEmailException(String.format(
-					"User %s's email address is not validated",
-					user.getUserId()));
+	public void setNodeReadable(final ShockNodeId id, final String user)
+			throws IOException, ShockHttpException,TokenExpiredException {
+		if (id == null) {
+			throw new IllegalArgumentException("id cannot be null");
+		}
+		if (user == null || user.equals("")) {
+			throw new IllegalArgumentException(
+					"user cannot be null or the empty string");
 		}
 		final URI targeturl = nodeurl.resolve(id.getId() + ACL_READ.acl + 
-				"?users=" + user.getUserId()); //TODO just use string here, get rid of unval email excep and other user
+				"?users=" + user);
 		final HttpPut htp = new HttpPut(targeturl);
 		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
 	}

@@ -4,11 +4,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
-import us.kbase.auth.AuthUser;
 import us.kbase.auth.TokenExpiredException;
 import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
-import us.kbase.shock.client.exceptions.UnvalidatedEmailException;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -50,7 +48,7 @@ public class ShockNode extends ShockData {
 	
 	//MUST add a client after object deserialization or many of the methods
 	//below will fail
-	void addClient(BasicShockClient client) {
+	void addClient(final BasicShockClient client) {
 		this.client = client;
 	}
 	
@@ -110,13 +108,13 @@ public class ShockNode extends ShockData {
 	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
-	public ShockACL getACLs(ShockACLType acl) throws ShockHttpException,
+	public ShockACL getACLs(final ShockACLType acl) throws ShockHttpException,
 			IOException, TokenExpiredException {
 		return client.getACLs(getId(), acl);
 	}
 	
 	/**
-	 * Proxy for {@link BasicShockClient#setNodeReadable(ShockNodeId, AuthUser)
+	 * Proxy for {@link BasicShockClient#setNodeReadable(ShockNodeId, String)
 	 * setNodeReadable()}.
 	 * Adds the user to the node's read access control list (ACL).
 	 * @param user the user to which read permissions shall be granted.
@@ -127,9 +125,8 @@ public class ShockNode extends ShockData {
 	 * address is unvalidated.
 	 */
 	@JsonIgnore
-	public void setReadable(AuthUser user) throws ShockHttpException,
-			IOException, TokenExpiredException,
-			UnvalidatedEmailException {
+	public void setReadable(final String user) throws ShockHttpException,
+			IOException, TokenExpiredException {
 		client.setNodeReadable(getId(), user);
 	}
 	

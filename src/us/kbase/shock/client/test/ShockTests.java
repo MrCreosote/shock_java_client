@@ -51,7 +51,6 @@ import us.kbase.shock.client.exceptions.ShockAuthorizationException;
 import us.kbase.shock.client.exceptions.ShockNoFileException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
-import us.kbase.shock.client.exceptions.UnvalidatedEmailException;
 
 public class ShockTests {
 	
@@ -59,7 +58,6 @@ public class ShockTests {
 	private static BasicShockClient bsc2;
 	private static BasicShockClient bscNoAuth;
 	private static AuthUser otherguy;
-	private static AuthUser noverifiedemail;
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -70,17 +68,8 @@ public class ShockTests {
 		String u2 = System.getProperty("test.user2");
 		String p1 = System.getProperty("test.pwd1");
 		String p2 = System.getProperty("test.pwd2");
-		String uno = System.getProperty("test.user.noemail");
-		String pno = System.getProperty("test.pwd.noemail");
 		
 		System.out.println("Logging in users");
-		try {
-			noverifiedemail = AuthService.login(uno, pno);
-		} catch (AuthException ae) {
-			throw new TestException("Unable to login with test.user.noemail: " + uno +
-					"\nPlease check the credentials in the test configuration.", ae);
-		}
-		System.out.println("Logged in user w/o verified email");
 		try {
 			otherguy = AuthService.login(u2, p2);
 		} catch (AuthException ae) {
@@ -96,8 +85,8 @@ public class ShockTests {
 					"\nPlease check the credentials in the test configuration.", ae);
 		}
 		System.out.println("Logged in user1");
-		if (user1.getEmail().equals(otherguy.getEmail())) {
-			throw new TestException("The email addresses of test.user1 and " + 
+		if (user1.getUserId().equals(otherguy.getUserId())) {
+			throw new TestException("The user IDs of test.user1 and " + 
 					"test.user2 are the same. Please provide test users with different email addresses.");
 		}
 		try {
@@ -276,7 +265,7 @@ public class ShockTests {
 				content.getBytes(StandardCharsets.UTF_8).length, name);
 	}
 	
-//	@Ignore
+	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		long smallfilesize = 1001000000;
@@ -569,14 +558,20 @@ public class ShockTests {
 	public void addAndReadAclViaNode() throws Exception {
 		ShockNode sn = setUpNodeAndCheckAuth(bsc2, true);
 		try {
-			sn.setReadable(noverifiedemail);
-			fail("set a node readable using an unverified email");
-		} catch (UnvalidatedEmailException uee) {
-			assertThat("wrong exception string for unverified email", uee.getLocalizedMessage(),
-					is(String.format("User %s's email address is not validated",
-					noverifiedemail.getUserId())));
+			sn.setReadable(null);
+			fail("set a node readable w/ null args");
+		} catch (IllegalArgumentException iae) {
+			assertThat("correct exception", iae.getLocalizedMessage(),
+					is("user cannot be null or the empty string"));
 		}
-		sn.setReadable(otherguy);
+		try {
+			sn.setReadable("");
+			fail("set a node readable w/ null args");
+		} catch (IllegalArgumentException iae) {
+			assertThat("correct exception", iae.getLocalizedMessage(),
+					is("user cannot be null or the empty string"));
+		}
+		sn.setReadable(otherguy.getUserId());
 		checkAuthAndDelete(sn, bsc2, 2);
 	}
 	
@@ -584,14 +579,27 @@ public class ShockTests {
 	public void addAndReadAclViaClient() throws Exception {
 		ShockNode sn = setUpNodeAndCheckAuth(bsc2, true);
 		try {
-			bsc1.setNodeReadable(sn.getId(), noverifiedemail);
-			fail("set a node readable using an unverified email");
-		} catch (UnvalidatedEmailException uee) {
-			assertThat("wrong exception string for unverified email", uee.getLocalizedMessage(),
-					is(String.format("User %s's email address is not validated",
-					noverifiedemail.getUserId())));
+			bsc1.setNodeReadable(null, otherguy.getUserId());
+			fail("set a node readable w/ null args");
+		} catch (IllegalArgumentException iae) {
+			assertThat("correct exception", iae.getLocalizedMessage(),
+					is("id cannot be null"));
 		}
-		bsc1.setNodeReadable(sn.getId(), otherguy);
+		try {
+			bsc1.setNodeReadable(sn.getId(), null);
+			fail("set a node readable w/ null args");
+		} catch (IllegalArgumentException iae) {
+			assertThat("correct exception", iae.getLocalizedMessage(),
+					is("user cannot be null or the empty string"));
+		}
+		try {
+			bsc1.setNodeReadable(sn.getId(), "");
+			fail("set a node readable w/ null args");
+		} catch (IllegalArgumentException iae) {
+			assertThat("correct exception", iae.getLocalizedMessage(),
+					is("user cannot be null or the empty string"));
+		}
+		bsc1.setNodeReadable(sn.getId(), otherguy.getUserId());
 		checkAuthAndDelete(sn, bsc2, 2);
 	}
 	
