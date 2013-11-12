@@ -57,7 +57,10 @@ public class BasicShockClient {
 	private static final String ATTRIBFILE = "attribs";
 	private static final ShockACLType ACL_READ = new ShockACLType("read");
 	
-	private static final int CHUNK_SIZE = 100000000; //~100 Mb
+	/**
+	 * The size of the file chunks sent/received from the Shock server.
+	 */
+	public static final int CHUNK_SIZE = 100000000; //~100 Mb
 	private static final String DOWNLOAD_CHUNK = 
 			"/?download&index=size&chunk_size=" + CHUNK_SIZE + "&part=";
 	
@@ -180,7 +183,7 @@ public class BasicShockClient {
 		try {
 			return mapper.readValue(resp, clazz).getShockData();
 		} catch (JsonParseException jpe) {
-			throw new Error(jpe); //something's broken
+			throw new RuntimeException(jpe); //something's broken
 		}
 	}
 	
@@ -376,6 +379,8 @@ public class BasicShockClient {
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
 		//TODO test after rewrite to eliminate filesize arg
+		//TODO test w/o attribs
+		//TODO test CS *1/2 -1, 0, +1
 		byte[] b = new byte[CHUNK_SIZE];
 		int read = read(file, b);
 		if (read < CHUNK_SIZE) {

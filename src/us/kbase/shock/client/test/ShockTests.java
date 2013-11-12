@@ -264,7 +264,116 @@ public class ShockTests {
 				name);
 	}
 	
-//	@Ignore
+	@Test
+	public void saveAndGetStreamingFiles() throws Exception {
+		int chunksize = BasicShockClient.CHUNK_SIZE;
+		if (chunksize % 10 != 0) {
+			throw new TestException("expected chunk size to be divisible by 10");
+		}
+		StringBuilder sb = new StringBuilder();
+		sb.append("abcd");
+		sb.appendCodePoint(0x0100);
+		sb.appendCodePoint(0x20AC);
+		Map<String, Object> attribs = new HashMap<String, Object>();
+		attribs.put("foobar", "barbaz");
+		ShockNode sn = writeFileToNode(attribs, sb.toString(), (chunksize - 1) / 9, "", "filename");
+		verifyStreamedNode(sn, attribs, sb.toString(), (chunksize - 1) / 9, "", "filename");
+		sn.delete();
+		
+	}
+	
+	private void verifyStreamedNode(final ShockNode sn,
+			final Map<String, Object> attribs, final String string,
+			final int writes, final String last, final String filename)
+			throws Exception {
+		//filename isn't kept for streamed files
+		assertThat("attribs correct", sn.getAttributes(), is(attribs));
+		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
+		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
+		final long filesize = readlen * writes + finallen;
+		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
+		
+		OutputStreamToInputStream<String> osis =
+				new OutputStreamToInputStream<String>() {
+					
+			@Override
+			protected String doRead(InputStream is) throws Exception {
+				byte[] data = new byte[readlen];
+				int read = read(is, data);
+				long size = 0;
+				while (read == readlen) {
+					assertThat("file incorrect at pos " + size, 
+							new String(data, StandardCharsets.UTF_8),
+							is(string));
+					size += read;
+					read = read(is, data);
+				}
+				if (finallen > 0) {
+					data = new byte[finallen];
+					read = read(is, data);
+					assertThat("file incorrect at pos " + size, 
+							new String(data, StandardCharsets.UTF_8),
+							is(last));
+					size += read;
+				}
+				data = new byte[1];
+				if (is.read(data) > 0) {
+					fail("file is too long");
+				}
+				assertThat("correct file size for node " + sn.getId().getId(),
+						
+						size, is(filesize));
+				return null;
+			}
+		};
+		bsc1.getFile(sn, osis);
+		osis.close();
+	}
+	
+	private int read(final InputStream file, final byte[] b)
+			throws IOException {
+		int pos = 0;
+		while (pos < b.length) {
+			final int read = file.read(b, pos, b.length - pos);
+			if (read == -1) {
+				break;
+			}
+			pos += read;
+		}
+		return pos;
+	}
+
+	private ShockNode writeFileToNode(final Map<String, Object> attribs,
+			final String string, final int writes, final String last,
+			final String filename) throws Exception {
+		InputStreamFromOutputStream<String> isos =
+				new InputStreamFromOutputStream<String>() {
+			
+			@Override
+			public String produce(final OutputStream dataSink)
+					throws Exception {
+				Writer writer = new OutputStreamWriter(dataSink,
+						StandardCharsets.UTF_8);
+				for (int i = 0; i < writes - 1; i++) {
+					writer.write(string);
+				}
+				writer.write(string + last);
+				writer.flush();
+				writer.close();
+				return null;
+			}
+		};
+		ShockNode sn;
+		if (attribs == null) {
+			sn = bsc1.addNode(isos, filename);
+		} else {
+			sn = bsc1.addNode(attribs, isos, filename);
+		}
+		isos.close();
+		return sn;
+	}
+
+	@Ignore //TODO unignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		long smallfilesize = 1001000000;
@@ -275,7 +384,7 @@ public class ShockTests {
 		final int teststrlenUTF8 = 7; //filesize mod this must = 0
 		final long writes = filesize / teststrlenUTF8;
 		final String testString = sb.toString();
-		
+		//TODO use the methods above
 		InputStreamFromOutputStream<String> isos =
 				new InputStreamFromOutputStream<String>() {
 			
@@ -297,6 +406,9 @@ public class ShockTests {
 
 		ShockNode sn = bsc1.addNode(attribs, isos, "somefile");
 		isos.close();
+		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
+		assertThat("attribs correct", sn.getAttributes(), is(attribs));
+		//filename is set = to the shock id on chunked uploads AFAICT
 		
 		OutputStreamToInputStream<String> osis =
 				new OutputStreamToInputStream<String>() {
