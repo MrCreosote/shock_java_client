@@ -5,9 +5,9 @@ EPOCH := $(shell date +%s)
 TAGS := $(shell git tag --contains $(GITCOMMIT))
 TAG := $(shell python internal/checktags.py $(TAGS))
 
-FOO := $(findstring Two valid tags for this commit, $(TAG))
+ERR := $(findstring Two valid tags for this commit, $(TAG))
 
-ifneq ($(FOO), )
+ifneq ($(ERR), )
 $(error Tags are ambiguous for this commit: $(TAG))
 endif 
 

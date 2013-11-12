@@ -497,7 +497,7 @@ public class BasicShockClient {
 					user.getUserId()));
 		}
 		final URI targeturl = nodeurl.resolve(id.getId() + ACL_READ.acl + 
-				"?users=" + user.getEmail()); //TODO WAIT DEP use userid when shock allows
+				"?users=" + user.getUserId()); //TODO just use string here, get rid of unval email excep and other user
 		final HttpPut htp = new HttpPut(targeturl);
 		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
 	}

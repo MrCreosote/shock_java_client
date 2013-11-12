@@ -276,6 +276,7 @@ public class ShockTests {
 				content.getBytes(StandardCharsets.UTF_8).length, name);
 	}
 	
+//	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		long smallfilesize = 1001000000;
@@ -358,12 +359,12 @@ public class ShockTests {
 		snget.getFile(bos2);
 		String filefromnode = bos2.toString(StandardCharsets.UTF_8.name());
 		Set<String> digestTypes = snget.getFileInformation().getChecksumTypes();
-		assertTrue(digestTypes.contains("md5"));
-		assertTrue(digestTypes.contains("sha1"));
+		assertTrue("has md5", digestTypes.contains("md5"));
+//		assertTrue("has sha1", digestTypes.contains("sha1"));
 		assertThat("unequal md5", snget.getFileInformation().getChecksum("md5"),
 				is(DigestUtils.md5Hex(content)));
-		assertThat("unequal sha1", snget.getFileInformation().getChecksum("sha1"),
-				is(DigestUtils.sha1Hex(content)));
+//		assertThat("unequal sha1", snget.getFileInformation().getChecksum("sha1"),
+//				is(DigestUtils.sha1Hex(content)));
 		try {
 			snget.getFileInformation().getChecksum("this is not a checksum type");
 			fail("got checksum type that doesn't exist");
