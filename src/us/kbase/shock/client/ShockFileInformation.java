@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author gaprice@lbl.gov
  *
  */
-@JsonIgnoreProperties({"virtual", "virtual_parts", "format"})
+@JsonIgnoreProperties({"virtual", "virtual_parts"})
 public class ShockFileInformation {
 	
 	private ShockFileInformation(){}
@@ -21,6 +21,7 @@ public class ShockFileInformation {
 	@JsonProperty("checksum")
 	private Map<String, String> checksum;
 	private String name;
+	private String format;
 	private long size;
 	
 	//will be empty string if no file
@@ -33,6 +34,18 @@ public class ShockFileInformation {
 			return null;
 		}
 		return name;
+	}
+	
+	/**
+	 * Get the file format.
+	 * @return the format of the file, or <code>null</code> if the shock node has no file or 
+	 * no format was provided.
+	 */
+	public String getFormat() {
+		if (format == "") {
+			return null;
+		}
+		return format;
 	}
 	
 	/**
@@ -76,7 +89,7 @@ public class ShockFileInformation {
 	@Override
 	public String toString() {
 		return "ShockFileInformation [checksum=" + checksum + ", name=" +
-				getName() + ", size=" + size + "]";
+				getName() + ", format=" + getFormat() + ", size=" + size + "]";
 	}
 
 }

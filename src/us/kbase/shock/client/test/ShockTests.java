@@ -245,22 +245,23 @@ public class ShockTests {
 	public void getNodeWithFile() throws Exception {
 		String content = "Been shopping? No, I've been shopping";
 		String name = "apistonengine.recipe";
-		ShockNode sn = addNode(bsc1, content, name);
-		testFile(content, name, sn);
+		ShockNode sn = addNode(bsc1, content, name, null);
+		testFile(content, name, null, sn);
 		bsc1.deleteNode(sn.getId());
 	}
 	
-	private ShockNode addNode(BasicShockClient bsc, String content, String name)
+	private ShockNode addNode(BasicShockClient bsc, String content, String name,
+			String format)
 			throws Exception {
 		return bsc.addNode(new ReaderInputStream(new StringReader(content)),
-				name);
+				name, format);
 	}
 	
 	private ShockNode addNode(BasicShockClient bsc, Map<String, Object> attribs,
-			String content, String name)
+			String content, String name, String format)
 			throws Exception {
 		return bsc.addNode(attribs, new ReaderInputStream(new StringReader(content)),
-				name);
+				name, format);
 	}
 	
 	@Test
@@ -278,42 +279,44 @@ public class ShockTests {
 		String ch2 = new StringBuilder().appendCodePoint(0x0100).toString();
 		String ch3 = new StringBuilder().appendCodePoint(0x20AC).toString();
 		
-		ShockNode sn = writeFileToNode(attribs, sb.toString(), (chunksize - 1) / 9, "", "filename");
-		verifyStreamedNode(sn, attribs, sb.toString(), (chunksize - 1) / 9, "", "filename");
+		ShockNode sn = writeFileToNode(attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON");
+		verifyStreamedNode(sn, attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON");
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, "~", "filename");
-		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, "~", "filename");
+		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null);
+		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, ch2, "filename");
-		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, ch2, "filename");
+		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", "");
+		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", null);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename");
-		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename");
+		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", "");
+		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", null);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename");
-		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename");
+		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8");
+		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8");
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename");
-		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename");
+		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII");
+		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII");
 		sn.delete();
-		
 	}
 	
 	private void verifyStreamedNode(final ShockNode sn,
 			final Map<String, Object> attribs, final String string,
-			final long writes, final String last, final String filename)
+			final long writes, final String last, final String filename,
+			final String format)
 			throws Exception {
-		//filename isn't kept for streamed files
 		assertThat("attribs correct", sn.getAttributes(), is(attribs));
 		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
+		//TODO restore when setting filename works for streamed files
+//		assertThat("filename correct", sn.getFileInformation().getName(), is(filename));
+		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
 		System.out.print("Verifying " + filesize + "b file... ");
 		
 		OutputStreamToInputStream<String> osis =
@@ -367,7 +370,7 @@ public class ShockTests {
 
 	private ShockNode writeFileToNode(final Map<String, Object> attribs,
 			final String string, final long writes, final String last,
-			final String filename) throws Exception {
+			final String filename, final String format) throws Exception {
 		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
@@ -392,9 +395,9 @@ public class ShockTests {
 		};
 		ShockNode sn;
 		if (attribs == null) {
-			sn = bsc1.addNode(isos, filename);
+			sn = bsc1.addNode(isos, filename, format);
 		} else {
-			sn = bsc1.addNode(attribs, isos, filename);
+			sn = bsc1.addNode(attribs, isos, filename, format);
 		}
 		isos.close();
 		System.out.println("done.");
@@ -418,12 +421,13 @@ public class ShockTests {
 		attribs.put("foo", "bar");
 		
 		final long writes = 571428571;
-		ShockNode sn = writeFileToNode(attribs, sb.toString(), writes, last.toString(), "somefile");
-		verifyStreamedNode(sn, attribs, sb.toString(), writes, last.toString(), "somefile");
+		ShockNode sn = writeFileToNode(attribs, sb.toString(), writes, last.toString(), "somefile", "JSON");
+		verifyStreamedNode(sn, attribs, sb.toString(), writes, last.toString(), "somefile", "JSON");
 		bsc1.deleteNode(sn.getId());
 	}
 	
-	private void testFile(String content, String name, ShockNode sn) throws Exception {
+	private void testFile(String content, String name, String format, ShockNode sn)
+			throws Exception {
 		ShockNode snget = bsc1.getNode(sn.getId());
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		bsc1.getFile(sn, bos);
@@ -446,6 +450,7 @@ public class ShockTests {
 		assertThat("file from node != file from client", filefromnode, is(filecon));
 		assertThat("file content unequal", filecon, is(content));
 		assertThat("file name unequal", snget.getFileInformation().getName(), is(name));
+		assertThat("file format unequal", snget.getFileInformation().getFormat(), is(format));
 		assertThat("file size wrong", snget.getFileInformation().getSize(), is((long) content.length()));
 	}
 	
@@ -454,8 +459,8 @@ public class ShockTests {
 		String content = "Like the downy growth on the upper lip of a mediterranean girl";
 		String name = "bydemagogueryImeandemagoguery";
 		Map<String, Object> attribs = makeSomeAttribs("castellaandlillete");
-		ShockNode sn = addNode(bsc1, attribs, content, name);
-		testFile(content, name, sn);
+		ShockNode sn = addNode(bsc1, attribs, content, name, "UTF-8");
+		testFile(content, name, "UTF-8", sn);
 		testAttribs(attribs, sn);
 		sn.delete();
 	}
@@ -513,35 +518,35 @@ public class ShockTests {
 					is("attributes may not be null"));
 		}
 		try {
-			bsc1.addNode(null, "foo");
+			bsc1.addNode(null, "foo", "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("file may not be null"));
 		}
 		try {
-			addNode(bsc1, "foo", null);
+			addNode(bsc1, "foo", null, "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("filename may not be null"));
 		}
 		try {
-			addNode(bsc1, null, "foo", "foo");
+			addNode(bsc1, null, "foo", "foo", "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("attributes may not be null"));
 		}
 		try {
-			bsc1.addNode(attribs, null, "foo");
+			bsc1.addNode(attribs, null, "foo", null);
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("file may not be null"));
 		}
 		try {
-			addNode(bsc1, attribs, "foo", null);
+			addNode(bsc1, attribs, "foo", null, null);
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),

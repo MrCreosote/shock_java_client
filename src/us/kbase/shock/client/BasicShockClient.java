@@ -282,7 +282,7 @@ public class BasicShockClient {
 	 */
 	public ShockNode addNode() throws IOException, ShockHttpException,
 			TokenExpiredException {
-		return _addNode(null, null, null);
+		return _addNode(null, null, null, null);
 	}
 	
 	/**
@@ -302,20 +302,23 @@ public class BasicShockClient {
 		if (attributes == null) {
 			throw new IllegalArgumentException("attributes may not be null");
 		}
-		return _addNode(attributes, null, null);
+		return _addNode(attributes, null, null, null);
 	}
 	
 	/**
 	 * Creates a node on the shock server containing a file.
 	 * @param file the file data.
 	 * @param filename the name of the file.
+	 * @param format the format of the file, e.g. ASCII, UTF-8, JSON. Ignored
+	 * if null.
 	 * @return a shock node object.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws ShockHttpException if the node could not be created.
 	 * @throws TokenExpiredException if the client authorization token has
 	 * expired.
 	 */
-	public ShockNode addNode(final InputStream file, final String filename)
+	public ShockNode addNode(final InputStream file, final String filename,
+			final String format)
 			throws IOException, ShockHttpException, TokenExpiredException {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
@@ -323,7 +326,7 @@ public class BasicShockClient {
 		if (filename == null) {
 			throw new IllegalArgumentException("filename may not be null");
 		}
-		return _addNodeStreaming(null, file, filename);
+		return _addNodeStreaming(null, file, filename, format);
 	}
 	
 	/**
@@ -332,6 +335,8 @@ public class BasicShockClient {
 	 * @param attributes the user-specified attributes.
 	 * @param file the file data.
 	 * @param filename the name of the file.
+	 * @param format the format of the file, e.g. ASCII, UTF-8, JSON. Ignored
+	 * if null.
 	 * @return a shock node object.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws ShockHttpException if the node could not be created.
@@ -341,7 +346,7 @@ public class BasicShockClient {
 	 * expired.
 	 */
 	public ShockNode addNode(final Map<String, Object> attributes,
-			final InputStream file, final String filename)
+			final InputStream file, final String filename, final String format)
 			throws IOException, ShockHttpException,
 			JsonProcessingException, TokenExpiredException {
 		if (attributes == null) {
@@ -353,11 +358,11 @@ public class BasicShockClient {
 		if (filename == null) {
 			throw new IllegalArgumentException("filename may not be null");
 		}
-		return _addNodeStreaming(attributes, file, filename);
+		return _addNodeStreaming(attributes, file, filename, format);
 	}
 	
 	private ShockNode _addNode(final Map<String, Object> attributes,
-			final byte[] file, final String filename)
+			final byte[] file, final String filename, final String format)
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
 		final HttpPost htp = new HttpPost(nodeurl);
@@ -370,6 +375,9 @@ public class BasicShockClient {
 			if (file != null) {
 				mpe.addPart("upload", new ByteArrayBody(file, filename));
 			}
+			if (format != null) {
+				mpe.addPart("format", new StringBody(format));
+			}
 			htp.setEntity(mpe);
 		}
 		final ShockNode sn = (ShockNode) processRequest(htp,
@@ -379,13 +387,14 @@ public class BasicShockClient {
 	}
 	
 	private ShockNode _addNodeStreaming(final Map<String, Object> attributes,
-			final InputStream file, final String filename)
+			final InputStream file, final String filename, final String format)
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
 		byte[] b = new byte[CHUNK_SIZE];
 		int read = read(file, b);
 		if (read < CHUNK_SIZE) {
-			return _addNode(attributes, Arrays.copyOf(b, read), filename);
+			return _addNode(attributes, Arrays.copyOf(b, read), filename,
+					format);
 		}
 		int chunks = 1;
 		ShockNode sn;
@@ -396,6 +405,9 @@ public class BasicShockClient {
 			if (attributes != null) {
 				final byte[] attribs = mapper.writeValueAsBytes(attributes);
 				mpe.addPart("attributes", new ByteArrayBody(attribs, ATTRIBFILE));
+			}
+			if (format != null) {
+				mpe.addPart("format", new StringBody(format));
 			}
 			htp.setEntity(mpe);
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
