@@ -15,18 +15,15 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.entity.mime.MultipartEntity;
-import org.apache.http.entity.mime.content.ByteArrayBody;
-import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
@@ -61,7 +58,7 @@ public class BasicShockClient {
 		connmgr.setMaxTotal(1000); //perhaps these should be configurable
 		connmgr.setDefaultMaxPerRoute(1000);
 	}
-	private final static CloseableHttpClient httpclient =
+	private final static CloseableHttpClient client =
 			HttpClients.custom().setConnectionManager(connmgr).build();
 	private final ObjectMapper mapper = new ObjectMapper();
 	private AuthToken token = null;
@@ -117,7 +114,7 @@ public class BasicShockClient {
 			throw new InvalidShockUrlException(turl.toString());
 			
 		}
-		final CloseableHttpResponse response = httpclient.execute(
+		final CloseableHttpResponse response = client.execute(
 				new HttpGet(turl));
 		final Map<String, Object> shockresp;
 		try {
@@ -189,7 +186,7 @@ public class BasicShockClient {
 			processRequest(final HttpRequestBase httpreq, final Class<T> clazz)
 			throws IOException, ShockHttpException, TokenExpiredException {
 		authorize(httpreq);
-		final CloseableHttpResponse response = httpclient.execute(httpreq);
+		final CloseableHttpResponse response = client.execute(httpreq);
 		try {
 			return getShockData(response, clazz);
 		} finally {
@@ -283,7 +280,7 @@ public class BasicShockClient {
 		for (int i = 0; i < chunks; i++) {
 			final HttpGet htg = new HttpGet(targeturl.toString() + (i + 1));
 			authorize(htg);
-			final CloseableHttpResponse response = httpclient.execute(htg);
+			final CloseableHttpResponse response = client.execute(htg);
 			try {
 				final int code = response.getStatusLine().getStatusCode();
 				if (code > 299) {
@@ -391,18 +388,20 @@ public class BasicShockClient {
 			TokenExpiredException {
 		final HttpPost htp = new HttpPost(nodeurl);
 		if (attributes != null || file != null) {
-			final MultipartEntity mpe = new MultipartEntity();
+			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
 			if (attributes != null) {
 				final byte[] attribs = mapper.writeValueAsBytes(attributes);
-				mpe.addPart("attributes", new ByteArrayBody(attribs, ATTRIBFILE));
+				mpeb.addBinaryBody("attributes", attribs,
+						ContentType.APPLICATION_JSON, ATTRIBFILE);
 			}
 			if (file != null) {
-				mpe.addPart("upload", new ByteArrayBody(file, filename));
+				mpeb.addBinaryBody("upload", file, ContentType.DEFAULT_BINARY,
+						filename);
 			}
 			if (format != null) {
-				mpe.addPart("format", new StringBody(format));
+				mpeb.addTextBody("format", format);
 			}
-			htp.setEntity(mpe);
+			htp.setEntity(mpeb.build());
 		}
 		final ShockNode sn = (ShockNode) processRequest(htp,
 				ShockNodeResponse.class);
@@ -424,16 +423,17 @@ public class BasicShockClient {
 		ShockNode sn;
 		{
 			final HttpPost htp = new HttpPost(nodeurl);
-			final MultipartEntity mpe = new MultipartEntity();
-			mpe.addPart("parts", new StringBody("unknown"));
+			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
+			mpeb.addTextBody("parts", "unknown");
 			if (attributes != null) {
 				final byte[] attribs = mapper.writeValueAsBytes(attributes);
-				mpe.addPart("attributes", new ByteArrayBody(attribs, ATTRIBFILE));
+				mpeb.addBinaryBody("attributes", attribs,
+						ContentType.APPLICATION_JSON, ATTRIBFILE);
 			}
 			if (format != null) {
-				mpe.addPart("format", new StringBody(format));
+				mpeb.addTextBody("format", format);
 			}
-			htp.setEntity(mpe);
+			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}
 		final URI targeturl = nodeurl.resolve(sn.getId().getId());
@@ -442,9 +442,10 @@ public class BasicShockClient {
 			if (read < CHUNK_SIZE) {
 				b = Arrays.copyOf(b, read);
 			}
-			final MultipartEntity mpe = new MultipartEntity();
-			mpe.addPart("" + chunks, new ByteArrayBody(b, filename));
-			htp.setEntity(mpe);
+			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
+			mpeb.addBinaryBody("" + chunks, b, ContentType.DEFAULT_BINARY,
+					filename);
+			htp.setEntity(mpeb.build());
 			processRequest(htp, ShockNodeResponse.class);
 			b = new byte[CHUNK_SIZE];
 			read = read(file, b);
@@ -452,9 +453,9 @@ public class BasicShockClient {
 		}
 		{
 			final HttpPut htp = new HttpPut(targeturl);
-			final MultipartEntity mpe = new MultipartEntity();
-			mpe.addPart("parts", new StringBody("close"));
-			htp.setEntity(mpe);
+			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
+			mpeb.addTextBody("parts", "close");
+			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}
 		sn.addClient(this);
