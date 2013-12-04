@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.input.ReaderInputStream;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
@@ -264,6 +265,62 @@ public class ShockTests {
 				name, format);
 	}
 	
+//	@Ignore
+	@Test
+	public void threaded() throws Exception {
+		//this test either hangs forever or throws an exception in commit
+		//c8aa276
+		SaveAndGetThread[] threads = new SaveAndGetThread[3];
+		for (int i = 0; i < threads.length; i++) {
+			threads[i] = new SaveAndGetThread("aaaaabbbbbc", 1000000, i);
+		}
+
+		// start the threads
+		for (int j = 0; j < threads.length; j++) {
+//			System.out.println("ID " + j + " starting thread.");
+			threads[j].start();
+//			System.out.println("\tID " + j + " started.");
+		}
+
+		// join the threads
+		for (int j = 0; j < threads.length; j++) {
+//			System.out.println("ID " + j + " joining thread ");
+			threads[j].join();
+			if (threads[j].e != null) {
+				throw threads[j].e;
+			}
+//			System.out.println("\tID " + j + " joined.");
+		}
+		
+	}
+	
+	class SaveAndGetThread extends Thread {
+		
+		private final String s;
+		private final int count;
+		private final int id;
+		public Exception e = null;
+		
+		public SaveAndGetThread(String s, int count, int id) {
+			this.s = s;
+			this.count = count;
+			this.id = id;
+		}
+		
+		
+		@Override
+		public void run() {
+			try {
+				ShockNode sn = writeFileToNode(null, s, count, "", "" + id, "JSON", id);
+				verifyStreamedNode(sn, null, s, count, "", "" + id, "JSON", id);
+				sn.delete();
+			} catch (Exception e) {
+				this.e = e;
+			}
+		}
+	}
+	
+	@Ignore
 	@Test
 	public void saveAndGetStreamingFiles() throws Exception {
 		int chunksize = BasicShockClient.CHUNK_SIZE;
@@ -279,35 +336,35 @@ public class ShockTests {
 		String ch2 = new StringBuilder().appendCodePoint(0x0100).toString();
 		String ch3 = new StringBuilder().appendCodePoint(0x20AC).toString();
 		
-		ShockNode sn = writeFileToNode(attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON");
-		verifyStreamedNode(sn, attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON");
+		ShockNode sn = writeFileToNode(attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON", 1);
+		verifyStreamedNode(sn, attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON", 1);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null);
-		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null);
+		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null, 2);
+		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null, 2);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", "");
-		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", null);
+		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", "", 3);
+		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", null, 3);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", "");
-		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", null);
+		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", "", 4);
+		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", null, 4);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8");
-		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8");
+		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8", 5);
+		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8", 5);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII");
-		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII");
+		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII", 6);
+		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII", 6);
 		sn.delete();
 	}
 	
 	private void verifyStreamedNode(final ShockNode sn,
 			final Map<String, Object> attribs, final String string,
 			final long writes, final String last, final String filename,
-			final String format)
+			final String format, final int id)
 			throws Exception {
 		assertThat("attribs correct", sn.getAttributes(), is(attribs));
 		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
@@ -317,7 +374,7 @@ public class ShockTests {
 		//TODO restore when setting filename works for streamed files
 //		assertThat("filename correct", sn.getFileInformation().getName(), is(filename));
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
-		System.out.print("Verifying " + filesize + "b file... ");
+		System.out.println("ID " + id + " Verifying " + filesize + "b file... ");
 		
 		OutputStreamToInputStream<String> osis =
 				new OutputStreamToInputStream<String>() {
@@ -352,7 +409,7 @@ public class ShockTests {
 		};
 		bsc1.getFile(sn, osis);
 		osis.close();
-		System.out.println("done.");
+		System.out.println("\tID " + id + " Verifying done.");
 	}
 	
 	private int read(final InputStream file, final byte[] b)
@@ -370,11 +427,11 @@ public class ShockTests {
 
 	private ShockNode writeFileToNode(final Map<String, Object> attribs,
 			final String string, final long writes, final String last,
-			final String filename, final String format) throws Exception {
+			final String filename, final String format, final int id)
+			throws Exception {
 		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
-		System.out.print("Streaming " + filesize + "b file... ");
 		
 		InputStreamFromOutputStream<String> isos =
 				new InputStreamFromOutputStream<String>() {
@@ -388,11 +445,16 @@ public class ShockTests {
 					writer.write(string);
 				}
 				writer.write(string + last);
+//				System.out.println("ID " + id + " finished writes.");
 				writer.flush();
-				writer.close();
+//				writer.close();
+//				dataSink.flush();
+//				dataSink.close();
+//				System.out.println("ID " + id + " closed the output stream.");
 				return null;
 			}
 		};
+		System.out.println("ID " + id + " Streaming " + filesize + "b file... ");
 		ShockNode sn;
 		if (attribs == null) {
 			sn = bsc1.addNode(isos, filename, format);
@@ -400,11 +462,11 @@ public class ShockTests {
 			sn = bsc1.addNode(attribs, isos, filename, format);
 		}
 		isos.close();
-		System.out.println("done.");
+		System.out.println("\tID " + id + " Streaming done.");
 		return sn;
 	}
 
-//	@Ignore
+	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		int foo = 1; //shut up java
@@ -421,8 +483,8 @@ public class ShockTests {
 		attribs.put("foo", "bar");
 		
 		final long writes = 571428571;
-		ShockNode sn = writeFileToNode(attribs, sb.toString(), writes, last.toString(), "somefile", "JSON");
-		verifyStreamedNode(sn, attribs, sb.toString(), writes, last.toString(), "somefile", "JSON");
+		ShockNode sn = writeFileToNode(attribs, sb.toString(), writes, last.toString(), "somefile", "JSON", 1);
+		verifyStreamedNode(sn, attribs, sb.toString(), writes, last.toString(), "somefile", "JSON", 1);
 		bsc1.deleteNode(sn.getId());
 	}
 	

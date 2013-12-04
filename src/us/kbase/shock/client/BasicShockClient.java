@@ -16,6 +16,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -24,7 +25,10 @@ import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.ByteArrayBody;
 import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -42,6 +46,8 @@ import us.kbase.shock.client.exceptions.ShockNoFileException;
  * A basic client for shock. Creating nodes, deleting nodes,
  * getting a subset of node data, and altering read acls is currently supported.
  * 
+ * Currently limited to 1000 connections.
+ * 
  * @author gaprice@lbl.gov
  *
  */
@@ -49,7 +55,14 @@ public class BasicShockClient {
 	
 	private final URI baseurl;
 	private final URI nodeurl;
-	private final HttpClient client = new DefaultHttpClient();
+	private final static PoolingHttpClientConnectionManager connmgr =
+			new PoolingHttpClientConnectionManager();
+	static {
+		connmgr.setMaxTotal(1000); //perhaps these should be configurable
+		connmgr.setDefaultMaxPerRoute(1000);
+	}
+	private final static CloseableHttpClient httpclient =
+			HttpClients.custom().setConnectionManager(connmgr).build();
 	private final ObjectMapper mapper = new ObjectMapper();
 	private AuthToken token = null;
 	
@@ -104,13 +117,16 @@ public class BasicShockClient {
 			throw new InvalidShockUrlException(turl.toString());
 			
 		}
-		final HttpResponse response = client.execute(new HttpGet(turl));
-		final String resp = EntityUtils.toString(response.getEntity());
+		final CloseableHttpResponse response = httpclient.execute(
+				new HttpGet(turl));
 		final Map<String, Object> shockresp;
 		try {
+			final String resp = EntityUtils.toString(response.getEntity());
 			shockresp = mapper.readValue(resp, Map.class);
 		} catch (JsonParseException jpe) {
 			throw new InvalidShockUrlException(turl.toString());
+		} finally {
+			response.close();
 		}
 		if (!shockresp.containsKey("id")) {
 			throw new InvalidShockUrlException(turl.toString());
@@ -173,8 +189,12 @@ public class BasicShockClient {
 			processRequest(final HttpRequestBase httpreq, final Class<T> clazz)
 			throws IOException, ShockHttpException, TokenExpiredException {
 		authorize(httpreq);
-		final HttpResponse response = client.execute(httpreq);
-		return getShockData(response, clazz);
+		final CloseableHttpResponse response = httpclient.execute(httpreq);
+		try {
+			return getShockData(response, clazz);
+		} finally {
+			response.close();
+		}
 	}
 	
 	private <T extends ShockResponse> ShockData
@@ -263,12 +283,16 @@ public class BasicShockClient {
 		for (int i = 0; i < chunks; i++) {
 			final HttpGet htg = new HttpGet(targeturl.toString() + (i + 1));
 			authorize(htg);
-			final HttpResponse response = client.execute(htg);
-			final int code = response.getStatusLine().getStatusCode();
-			if (code > 299) {
-				getShockData(response, ShockNodeResponse.class); //trigger errors
+			final CloseableHttpResponse response = httpclient.execute(htg);
+			try {
+				final int code = response.getStatusLine().getStatusCode();
+				if (code > 299) {
+					getShockData(response, ShockNodeResponse.class); //trigger errors
+				}
+				file.write(EntityUtils.toByteArray(response.getEntity()));
+			} finally {
+				response.close();
 			}
-			file.write(EntityUtils.toByteArray(response.getEntity()));
 		}
 	}
 	
@@ -486,6 +510,7 @@ public class BasicShockClient {
 		final URI targeturl = nodeurl.resolve(id.getId() + ACL_READ.acl + 
 				"?users=" + user);
 		final HttpPut htp = new HttpPut(targeturl);
+		//TODO check errors are ok when Shock changes to ACLs for editing ACLs
 		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
 	}
 	
@@ -500,6 +525,7 @@ public class BasicShockClient {
 	 */
 	public void setNodeWorldReadable(final ShockNodeId id) throws IOException,
 			ShockHttpException, TokenExpiredException {
+		//TODO change to settingn global read boolean rather than deleting users when shock supports
 		final List<ShockUserId> acls = getACLs(id, ACL_READ).getRead();
 		final List<String> userlist = new ArrayList<String>();
 		for (ShockUserId uid: acls) {
