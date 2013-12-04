@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.input.ReaderInputStream;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
@@ -55,7 +54,7 @@ public class ShockTests {
 	
 	private static BasicShockClient bsc1;
 	private static BasicShockClient bsc2;
-	private static BasicShockClient bscNoAuth;
+//	private static BasicShockClient bscNoAuth;
 	private static AuthUser otherguy;
 
 	@BeforeClass
@@ -95,7 +94,7 @@ public class ShockTests {
 			throw new TestException("Couldn't set up shock client: " +
 					ioe.getLocalizedMessage());
 		}
-		bscNoAuth = new BasicShockClient(url);
+//		bscNoAuth = new BasicShockClient(url);
 		System.out.println("Set up shock clients");
 	}
 	
@@ -744,19 +743,19 @@ public class ShockTests {
 		checkAuthAndDelete(sn, bsc2, 2);
 	}
 	
-	@Test
-	public void addAndReadAclViaClientNoAuth() throws Exception {
-		ShockNode sn = setUpNodeAndCheckAuth(bscNoAuth, false);
-		bsc1.setNodeWorldReadable(sn.getId());
-		checkAuthAndDelete(sn, bscNoAuth, 0);
-	}
-	
-	@Test
-	public void addAndReadAclViaNodeNoAuth() throws Exception {
-		ShockNode sn = setUpNodeAndCheckAuth(bscNoAuth, false);
-		sn.setWorldReadable();
-		checkAuthAndDelete(sn, bscNoAuth, 0);
-	}
+//	@Test
+//	public void addAndReadAclViaClientNoAuth() throws Exception {
+//		ShockNode sn = setUpNodeAndCheckAuth(bscNoAuth, false);
+//		bsc1.setNodeWorldReadable(sn.getId());
+//		checkAuthAndDelete(sn, bscNoAuth, 0);
+//	}
+//	
+//	@Test
+//	public void addAndReadAclViaNodeNoAuth() throws Exception {
+//		ShockNode sn = setUpNodeAndCheckAuth(bscNoAuth, false);
+//		sn.setWorldReadable();
+//		checkAuthAndDelete(sn, bscNoAuth, 0);
+//	}
 	
 	private ShockNode setUpNodeAndCheckAuth(BasicShockClient c, boolean auth)
 			throws Exception{

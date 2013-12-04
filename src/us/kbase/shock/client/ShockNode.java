@@ -131,21 +131,6 @@ public class ShockNode extends ShockData {
 	}
 	
 	/**
-	 * Proxy for {@link BasicShockClient#setNodeWorldReadable(ShockNodeId)
-	 * setNodeWorldReadable()}.
-	 * Removes all users from the node's read access control list (ACL), thus
-	 * making the node world readable.
-	 * @throws ShockHttpException if the read ACL could not be modified.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
-	 */
-	@JsonIgnore
-	public void setWorldReadable() throws ShockHttpException,
-			IOException, TokenExpiredException {
-		client.setNodeWorldReadable(getId());
-	}
-	
-	/**
 	 * Proxy for {@link BasicShockClient#getFile(ShockNode, OutputStream)
 	 * getFile()}.
 	 * Gets the file stored at this shock node.

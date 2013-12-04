@@ -8,12 +8,9 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -513,30 +510,6 @@ public class BasicShockClient {
 		final HttpPut htp = new HttpPut(targeturl);
 		//TODO check errors are ok when Shock changes to ACLs for editing ACLs
 		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
-	}
-	
-	/**
-	 * Makes a node world readable.
-	 * @param id the node to modify.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws ShockHttpException if the node read access control list could not be
-	 * altered.
-	 * @throws TokenExpiredException if the client authorization token has
-	 * expired.
-	 */
-	public void setNodeWorldReadable(final ShockNodeId id) throws IOException,
-			ShockHttpException, TokenExpiredException {
-		//TODO change to settingn global read boolean rather than deleting users when shock supports
-		final List<ShockUserId> acls = getACLs(id, ACL_READ).getRead();
-		final List<String> userlist = new ArrayList<String>();
-		for (ShockUserId uid: acls) {
-			userlist.add(uid.getId());
-		}
-		final URI targeturl = nodeurl.resolve(id.getId() + ACL_READ.acl +
-				"?users=" + StringUtils.join(userlist, ","));
-		final HttpDelete htd = new HttpDelete(targeturl);
-		processRequest(htd, ShockACLResponse.class);
-		
 	}
 	
 	/**
