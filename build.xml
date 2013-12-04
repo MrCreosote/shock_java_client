@@ -15,9 +15,9 @@
   <fileset dir="${jardir}" id="shocklib">
     <include name="apache_commons/commons-lang3-3.1.jar"/>
     <include name="apache_commons/commons-logging-1.1.1.jar"/>
-    <include name="apache_commons/http/httpclient-4.2.5.jar"/>
-    <include name="apache_commons/http/httpcore-4.2.4.jar"/>
-    <include name="apache_commons/http/httpmime-4.2.5.jar"/>
+    <include name="apache_commons/http/httpclient-4.3.1.jar"/>
+    <include name="apache_commons/http/httpcore-4.3.jar"/>
+    <include name="apache_commons/http/httpmime-4.3.1.jar"/>
     <include name="kbase/auth/kbase-auth-1380919426-d35c17d.jar"/>
     <include name="jackson/jackson-annotations-2.2.3.jar"/>
     <include name="jackson/jackson-core-2.2.3.jar"/>

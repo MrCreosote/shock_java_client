@@ -270,7 +270,7 @@ public class ShockTests {
 	public void threaded() throws Exception {
 		//this test either hangs forever or throws an exception in commit
 		//c8aa276
-		SaveAndGetThread[] threads = new SaveAndGetThread[3];
+		SaveAndGetThread[] threads = new SaveAndGetThread[10];
 		for (int i = 0; i < threads.length; i++) {
 			threads[i] = new SaveAndGetThread("aaaaabbbbbc", 1000000, i);
 		}
@@ -320,7 +320,7 @@ public class ShockTests {
 		}
 	}
 	
-	@Ignore
+//	@Ignore
 	@Test
 	public void saveAndGetStreamingFiles() throws Exception {
 		int chunksize = BasicShockClient.CHUNK_SIZE;
@@ -466,7 +466,7 @@ public class ShockTests {
 		return sn;
 	}
 
-	@Ignore
+//	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		int foo = 1; //shut up java
