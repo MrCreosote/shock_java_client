@@ -65,8 +65,7 @@ public class BasicShockClient {
 	private static final String ATTRIBFILE = "attribs";
 	private static final ShockACLType ACL_READ = new ShockACLType("read");
 	
-	//TODO performance testing. This may be too big.
-	private static int CHUNK_SIZE = 100000000; //~100 Mb
+	private static int CHUNK_SIZE = 50000000; //~100 Mb
 	
 	/** Get the size of the upload / download chunk size.
 	 * @return the size of the file chunks sent/received from the Shock server.

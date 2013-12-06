@@ -468,7 +468,7 @@ public class ShockTests {
 //	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
-		if (BasicShockClient.getChunkSize() != 100000000) {
+		if (BasicShockClient.getChunkSize() != 50000000) {
 			throw new TestException("expected chunk size to be 100000000");
 		}
 		StringBuilder sb = new StringBuilder();
