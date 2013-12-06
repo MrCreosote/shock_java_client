@@ -65,12 +65,18 @@ public class BasicShockClient {
 	private static final String ATTRIBFILE = "attribs";
 	private static final ShockACLType ACL_READ = new ShockACLType("read");
 	
-	/**
-	 * The size of the file chunks sent/received from the Shock server.
+	//TODO performance testing. This may be too big.
+	private static int CHUNK_SIZE = 100000000; //~100 Mb
+	
+	/** Get the size of the upload / download chunk size.
+	 * @return the size of the file chunks sent/received from the Shock server.
 	 */
-	public static final int CHUNK_SIZE = 100000000; //~100 Mb
-	private static final String DOWNLOAD_CHUNK = 
-			"/?download&index=size&chunk_size=" + CHUNK_SIZE + "&part=";
+	public static int getChunkSize() {
+		return CHUNK_SIZE;
+	}
+	private static String getDownloadURLPrefix() {
+		return "/?download&index=size&chunk_size=" + CHUNK_SIZE + "&part=";
+	}
 	
 	/**
 	 * Create a new shock client authorized to act as a shock user.
@@ -273,7 +279,7 @@ public class BasicShockClient {
 		final int chunks = size.divide(new BigDecimal(CHUNK_SIZE))
 				.setScale(0, BigDecimal.ROUND_CEILING).intValueExact();
 		final URI targeturl = nodeurl.resolve(sn.getId().getId() +
-				DOWNLOAD_CHUNK);
+				getDownloadURLPrefix());
 		for (int i = 0; i < chunks; i++) {
 			final HttpGet htg = new HttpGet(targeturl.toString() + (i + 1));
 			authorize(htg);

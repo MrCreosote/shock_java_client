@@ -322,7 +322,7 @@ public class ShockTests {
 //	@Ignore
 	@Test
 	public void saveAndGetStreamingFiles() throws Exception {
-		int chunksize = BasicShockClient.CHUNK_SIZE;
+		int chunksize = BasicShockClient.getChunkSize();
 		if (chunksize % 10 != 0) {
 			throw new TestException("expected chunk size to be divisible by 10");
 		}
@@ -468,8 +468,7 @@ public class ShockTests {
 //	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
-		int foo = 1; //shut up java
-		if (BasicShockClient.CHUNK_SIZE + foo != 100000001) {
+		if (BasicShockClient.getChunkSize() != 100000000) {
 			throw new TestException("expected chunk size to be 100000000");
 		}
 		StringBuilder sb = new StringBuilder();
