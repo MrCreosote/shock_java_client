@@ -6,6 +6,22 @@ A basic java client for the Shock service. Supports node creation, deletion and
 retrieval of a subset of node data, streaming file up/download, viewing
 ACLs, and limited ACL modification.
 
+VERSION: 0.0.5 (Released 12/6/2013)
+-----------------------------------------
+
+shock_service commit: 08b9f0c6b690cf06c04604165b6534f6580295d5
+
+NEW FEATURES:
+- None
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- Cut memory requirements in half based on performance testing of different
+	download/upload chunk sizes.
+
+ANTICIPATED FUTURE DEVELOPMENTS:
+- Copy a node when Shock supports it.
+- ACLs via KBase groups when Shock supports it.
+
 VERSION: 0.0.4 (Released 12/3/2013)
 -----------------------------------------
 
