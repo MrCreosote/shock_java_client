@@ -39,6 +39,7 @@ public class CompareChunkSize {
 	public CompareChunkSize(String user, String pwd,
 			String shockURL, List<Integer> chunkSizes)
 					throws Exception {
+		System.out.println("Testing shock read/write speeds");
 		System.out.println("logging in " + user);
 		this.token = AuthService.login(user, pwd).getToken();
 		this.shockURL = new URL(shockURL);
@@ -46,7 +47,7 @@ public class CompareChunkSize {
 		for (int i = 0; i < data.length; i++) {
 			data[i] = (byte) 0xAA; //whatever
 		}
-		System.out.println("Testing against " + shockURL);
+		System.out.println("Testing shock java client against " + shockURL);
 		System.out.println(String.format("file size: %,dB", data.length));
 		Map<Integer, Perf> results = new HashMap<Integer, CompareChunkSize.Perf>();
 		for (Integer chunksize: chunkSizes) {
