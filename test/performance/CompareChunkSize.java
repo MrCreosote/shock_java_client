@@ -31,6 +31,7 @@ public class CompareChunkSize {
 	}
 
 	private static final int REPS = 10;
+	private static final int DATA_SIZE = 500000001;
 	private final byte[] data;
 	private final AuthToken token;
 	private final URL shockURL;
@@ -41,10 +42,11 @@ public class CompareChunkSize {
 		System.out.println("logging in " + user);
 		this.token = AuthService.login(user, pwd).getToken();
 		this.shockURL = new URL(shockURL);
-		data = new byte[500000001];
+		data = new byte[DATA_SIZE];
 		for (int i = 0; i < data.length; i++) {
 			data[i] = (byte) 0xAA; //whatever
 		}
+		System.out.println("Testing against " + shockURL);
 		System.out.println(String.format("file size: %,dB", data.length));
 		Map<Integer, Perf> results = new HashMap<Integer, CompareChunkSize.Perf>();
 		for (Integer chunksize: chunkSizes) {
@@ -83,7 +85,8 @@ public class CompareChunkSize {
 	}
 	
 	private Perf measurePerformance(int chunksize) throws Exception {
-		System.out.println("Measuring speed with chunksize of " + chunksize);
+		System.out.println(String.format(
+				"Measuring speed with chunksize of %,dB", chunksize));
 		BasicShockClient bsc = getClient(chunksize);
 		List<Long> writes = new LinkedList<Long>();
 		List<Long> reads = new LinkedList<Long>();
@@ -92,15 +95,12 @@ public class CompareChunkSize {
 			long start = System.nanoTime();
 			ShockNode sn = bsc.addNode(new ByteArrayInputStream(data), "foo", "UTF-8");
 			writes.add(System.nanoTime() - start);
-//			List<Double> shockWriteRes = summarize(data.length, start, System.nanoTime());
 
 			start = System.nanoTime();
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			sn.getFile(baos);
 			baos.toByteArray();
 			reads.add(System.nanoTime() - start);
-//			List<Double> shockReadRes = summarize(data.length, start, System.nanoTime());
-
 			sn.delete();
 		}
 		System.out.println();
@@ -144,6 +144,9 @@ public class CompareChunkSize {
 		}
 		
 		private double stddev(double mean, List<Long> values, boolean population) {
+			if (values.size() < 2) {
+				return Double.NaN;
+			}
 			final double pop = population ? 0 : -1;
 			double accum = 0;
 			for (Long d: values) {
