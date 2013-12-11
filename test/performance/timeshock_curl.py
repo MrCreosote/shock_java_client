@@ -136,7 +136,7 @@ class CompareChunkSize(object):
                 stderr=self.DEVNULL, stdout=self.DEVNULL)
         if rem:
             if not 'i' in locals():
-                i = 0
+                i = -1
             subprocess.call(
                 ['curl', '-X', 'PUT', '-F', str(i + 2) + '=@' + rem,
                  '-H', 'Authorization: OAuth ' + self.token, url],
