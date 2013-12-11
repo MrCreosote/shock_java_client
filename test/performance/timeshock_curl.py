@@ -9,14 +9,14 @@ import sys
 import httplib2
 import base64
 import json
-from duplicity.tarfile import pwd
 import tempfile
 import os
 import urlparse
 import time
 import subprocess
+import math
 
-REPS = 10
+REPS = 5
 DATA_SIZE = 500000001
 URL = "http://localhost:7044"
 
@@ -50,16 +50,28 @@ class CompareChunkSize(object):
     DEVNULL = open(os.devnull, 'wb')
 
     def __init__(self, user, pwd, url, chunksizes):
-        print("Testing shock read/write speeds")
-        print("logging in " + user)
+        print('Testing shock read/write speeds, N=' + str(REPS))
+        print('logging in ' + user)
         self.token = _get_token(user, pwd)
         self.url = url
-        print("testing curl against " + url)
-        print("file size: {:,}".format(DATA_SIZE))
-        results = {}
+        print('testing curl against ' + url)
+        print('file size: {:,}'.format(DATA_SIZE))
+        table = []
+        table.append(['Chunksize', 'write (s)', 'write (MBps)', 'read(s)',
+                      'read (MBps)'])
         for ch in chunksizes:
-            results[ch] = self.measure_performance(ch)
-            pass
+            results = self.measure_performance(ch)
+            wmean = self.mean(results[0])
+            rmean = self.mean(results[1])
+            table.append([
+                str(ch),
+                "{:,.4f}".format(wmean) + '+/-' +
+                "{:,.4f}".format(self.stddev(wmean, results[0])),
+                "{:,.3f}".format(float(DATA_SIZE) / wmean / 1000000),
+                "{:,.4f}".format(rmean) + '+/-' +
+                "{:,.4f}".format(self.stddev(rmean, results[1])),
+                "{:,.3f}".format(float(DATA_SIZE) / rmean / 1000000)])
+        self.print_table(table)
 
     def measure_performance(self, chunksize):
         print('Measuring speed with chunksize of {:,}'.format(chunksize))
@@ -91,7 +103,7 @@ class CompareChunkSize(object):
                 ['curl', '-X', 'DELETE',
                  '-H', 'Authorization: OAuth ' + self.token, url],
                 stderr=self.DEVNULL, stdout=self.DEVNULL)
-            print()
+        print()
 
         os.remove(whole)
         if rem:
@@ -123,6 +135,8 @@ class CompareChunkSize(object):
                  '-H', 'Authorization: OAuth ' + self.token, url],
                 stderr=self.DEVNULL, stdout=self.DEVNULL)
         if rem:
+            if not 'i' in locals():
+                i = 0
             subprocess.call(
                 ['curl', '-X', 'PUT', '-F', str(i + 2) + '=@' + rem,
                  '-H', 'Authorization: OAuth ' + self.token, url],
@@ -139,6 +153,43 @@ class CompareChunkSize(object):
             f.write('a')
         f.close()
         return f.name
+
+    def mean(self, nums):
+        return float(sum(nums)) / len(nums)
+
+    def stddev(self, mean, nums, pop=False):
+        if len(nums) < 2:
+            return float('nan')
+        pop = 0 if pop else -1
+        accum = 0.0
+        for n in nums:
+            accum += math.pow(float(n) - mean, 2)
+        return math.sqrt(accum / (len(nums) + pop))
+
+    # from https://gist.github.com/lonetwin/4721748
+    def print_table(self, rows):
+        """print_table(rows)
+
+        Prints out a table using the data in `rows`, which is assumed to be a
+        sequence of sequences with the 0th element being the header.
+        """
+
+        # - figure out column widths
+        widths = [len(max(columns, key=len)) for columns in zip(*rows)]
+
+        # - print the header
+        header, data = rows[0], rows[1:]
+        print(' | '.join(format(title, "%ds" % width)
+                         for width, title in zip(widths, header)))
+
+        # - print the separator
+        print('-+-'.join('-' * width for width in widths))
+
+        # - print the data
+        for row in data:
+            print(" | ".join(format(cdata, "%ds" % width)
+                              for width, cdata in zip(widths, row)))
+
 
 if __name__ == '__main__':
     user = sys.argv[1]

@@ -39,7 +39,7 @@ public class CompareChunkSize {
 	public CompareChunkSize(String user, String pwd,
 			String shockURL, List<Integer> chunkSizes)
 					throws Exception {
-		System.out.println("Testing shock read/write speeds");
+		System.out.println("Testing shock read/write speeds, N=" + REPS);
 		System.out.println("logging in " + user);
 		this.token = AuthService.login(user, pwd).getToken();
 		this.shockURL = new URL(shockURL);
