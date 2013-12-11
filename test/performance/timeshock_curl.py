@@ -16,7 +16,7 @@ import time
 import subprocess
 import math
 
-REPS = 5
+REPS = 10
 DATA_SIZE = 500000001
 URL = "http://localhost:7044"
 
@@ -115,7 +115,7 @@ class CompareChunkSize(object):
         if (DATA_SIZE % chunksize != 0):
             chunks += 1
         url += '/?download&index=size&chunk_size=' + str(chunksize) + '&part='
-        for i in xrange(REPS):
+        for i in xrange(chunks):
             subprocess.check_call(
                 ['curl', '-X', 'GET',
                  '-H', 'Authorization: OAuth ' + self.token, url + str(i + 1)],
@@ -194,4 +194,4 @@ class CompareChunkSize(object):
 if __name__ == '__main__':
     user = sys.argv[1]
     pwd = sys.argv[2]
-    CompareChunkSize(user, pwd, URL, (20000000, 50000000, 100000000))
+    CompareChunkSize(user, pwd, URL, (10000000, 20000000, 50000000, 100000000))
