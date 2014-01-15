@@ -134,18 +134,19 @@ public class ShockTests {
 		//Note using cdmi to test for cases where valid json is returned but
 		//the id field != Shock. However, sometimes the cdmi server doesn't 
 		//return an id, which I assume is a bug (see https://atlassian.kbase.us/browse/KBASE-200)
+		String newurl = "https://kbase.us/services/shock-api/";
 		List<String> badURLs = Arrays.asList("ftp://thing.us/",
 			"http://google.com/", "http://kbase.us/services/cdmi_api/",
-			"http://kbase.us/services/shock-api/node/9u8093481-1758175-157-15/");
+			"http://kbase.us/services/shock-api/node/9u8093481-1758175-157-15/",
+			newurl + "foo/");
 		for (String burl: badURLs) {
 			try {
 				new BasicShockClient(new URL(burl));
 				fail("init'd client with bad url");
 			} catch (InvalidShockUrlException isu) {}
 		}
-		String newurl = "https://kbase.us/services/shock-api/";
-		BasicShockClient b2 = new BasicShockClient(new URL(newurl + "foo/"));
-		assertThat("https url not preserved", b2.getShockUrl().toString(), is(newurl));
+//		BasicShockClient b2 = new BasicShockClient(new URL(newurl + "foo/"));
+//		assertThat("https url not preserved", b2.getShockUrl().toString(), is(newurl));
 		String newurl2 = "https://kbase.us/services/shock-api";
 		BasicShockClient b3 = new BasicShockClient(new URL(newurl2));
 		assertThat("url w/o trailing slash fails", b3.getShockUrl().toString(),
@@ -761,10 +762,10 @@ public class ShockTests {
 		ShockNode sn = bsc1.addNode();
 		String expected;
 		if (auth) {
-			expected = "Unauthorized";
+			expected = "User Unauthorized";
 		} else {
 			//if Authorization.read = false, then you get a No Auth error
-			expected = "Unauthorized"; //"No Authorization";
+			expected = "User Unauthorized"; //"No Authorization";
 		}
 		try {
 			c.getNode(sn.getId());
