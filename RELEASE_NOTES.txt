@@ -6,6 +6,23 @@ A basic java client for the Shock service. Supports node creation, deletion and
 retrieval of a subset of node data, streaming file up/download, viewing
 ACLs, and limited ACL modification.
 
+VERSION: 0.0.6 (Released 1/24/2013)
+-----------------------------------------
+
+shock_service commit: e2549cf9cd17386aa17fedaf0aaffeba6d33a1ba
+
+NEW FEATURES:
+- None
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- Constructor tries to create & delete a node to ensure shock is set up
+  correctly. Currently if shock cannot auth to mongo it throws
+  400 Invalid authorization header or content.
+
+ANTICIPATED FUTURE DEVELOPMENTS:
+- Copy a node when Shock supports it.
+- ACLs via KBase groups when Shock supports it.
+
 VERSION: 0.0.5 (Released 12/6/2013)
 -----------------------------------------
 
