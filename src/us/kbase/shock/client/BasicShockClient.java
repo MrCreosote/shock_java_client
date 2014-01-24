@@ -85,12 +85,17 @@ public class BasicShockClient {
 	 * @throws InvalidShockUrlException if the <code>url</code> does not reference
 	 * a shock server.
 	 * @throws TokenExpiredException if the <code>token</code> is expired.
+	 * @throws ShockHttpException if the connection to shock fails.
 	 */
 	public BasicShockClient(final URL url, final AuthToken token)
 			throws IOException, InvalidShockUrlException,
-			TokenExpiredException {
+			TokenExpiredException, ShockHttpException {
 		this(url);
 		updateToken(token);
+		if (token != null) { // test shock config/auth etc.
+			final ShockNode sn = addNode();
+			sn.delete();
+		}
 	}
 	
 	/**

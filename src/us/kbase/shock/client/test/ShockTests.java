@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.input.ReaderInputStream;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
