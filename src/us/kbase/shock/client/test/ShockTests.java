@@ -68,13 +68,6 @@ public class ShockTests {
 		String p2 = System.getProperty("test.pwd2");
 		
 		System.out.println("Logging in users");
-		try {
-			otherguy = AuthService.login(u2, p2);
-		} catch (AuthException ae) {
-			throw new TestException("Unable to login with test.user2: " + u2 +
-					"\nPlease check the credentials in the test configuration.", ae);
-		}
-		System.out.println("Logged in user2");
 		AuthUser user1;
 		try {
 			user1 = AuthService.login(u1, p1);
@@ -83,6 +76,13 @@ public class ShockTests {
 					"\nPlease check the credentials in the test configuration.", ae);
 		}
 		System.out.println("Logged in user1");
+		try {
+			otherguy = AuthService.login(u2, p2);
+		} catch (AuthException ae) {
+			throw new TestException("Unable to login with test.user2: " + u2 +
+					"\nPlease check the credentials in the test configuration.", ae);
+		}
+		System.out.println("Logged in user2");
 		if (user1.getUserId().equals(otherguy.getUserId())) {
 			throw new TestException("The user IDs of test.user1 and " + 
 					"test.user2 are the same. Please provide test users with different email addresses.");
@@ -336,28 +336,43 @@ public class ShockTests {
 		String ch2 = new StringBuilder().appendCodePoint(0x0100).toString();
 		String ch3 = new StringBuilder().appendCodePoint(0x20AC).toString();
 		
-		ShockNode sn = writeFileToNode(attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON", 1);
-		verifyStreamedNode(sn, attribs, sb.toString(), (chunksize - 1) / 9, "", "filename", "JSON", 1);
+		int length = 9; //length of sb
+		
+		long minwrites = chunksize / length;
+		int rem = chunksize % length;
+		if (minwrites == chunksize) {
+			minwrites--;
+			rem = length;
+		}
+		StringBuilder sbsmall = new StringBuilder();
+		for (int i = 0; i < rem - 1; i++) {
+			sbsmall.append("a");
+		}
+		String sbs = sbsmall.toString();
+		String sbs2 = sbs + sbs;
+		
+		ShockNode sn = writeFileToNode(attribs, sb.toString(), minwrites, sbs, "filename", "JSON", 1);
+		verifyStreamedNode(sn, attribs, sb.toString(), minwrites, sbs, "filename", "JSON", 1);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null, 2);
-		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, "~", "filename", null, 2);
+		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + "~", "filename", null, 2);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + "~", "filename", null, 2);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", "", 3);
-		verifyStreamedNode(sn, null, sb.toString(), (chunksize - 1) / 9, ch2, "filename", null, 3);
+		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + ch2, "filename", "", 3);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "filename", null, 3);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", "", 4);
-		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, "j", "filename", null, 4);
+		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", "", 4);
+		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", null, 4);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8", 5);
-		verifyStreamedNode(sn, null, sb.toString(), ((chunksize - 1) / 9) * 2, ch2, "filename", "UTF-8", 5);
+		sn = writeFileToNode(null, sb.toString(), minwrites * 2, sbs2 + ch2, "filename", "UTF-8", 5);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites * 2, sbs2 + ch2, "filename", "UTF-8", 5);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII", 6);
-		verifyStreamedNode(sn, attribs, sb.toString(), ((chunksize - 1) / 9) * 2, ch3, "filename", "ASCII", 6);
+		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "filename", "ASCII", 6);
+		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "filename", "ASCII", 6);
 		sn.delete();
 	}
 	
@@ -375,7 +390,7 @@ public class ShockTests {
 //		assertThat("filename correct", sn.getFileInformation().getName(), is(filename));
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
 		System.out.println("ID " + id + " Verifying " + filesize + "b file... ");
-		
+
 		OutputStreamToInputStream<String> osis =
 				new OutputStreamToInputStream<String>() {
 					
@@ -384,19 +399,26 @@ public class ShockTests {
 				byte[] data = new byte[readlen];
 				int read = read(is, data);
 				long size = 0;
-				while (read == readlen) {
+				long reads = 1;
+				while (reads <= writes) {
 					assertThat("file incorrect at pos " + size, 
 							new String(data, StandardCharsets.UTF_8),
 							is(string));
 					size += read;
+					reads++;
 					read = read(is, data);
 				}
+				byte[] finaldata = new byte[finallen];
+				int read2 = read(is, finaldata);
 				assertThat("correct length of final string for node "
-						+ sn.getId().getId(), read, is(finallen));
+						+ sn.getId().getId(), read + read2, is(finallen));
+				byte[] lastgot = new byte[read + read2];
+				System.arraycopy(data, 0, lastgot, 0, read);
+				System.arraycopy(finaldata, 0, lastgot, read, read2);
 				if (finallen > 0) {
-					final String l = new String(Arrays.copyOf(data, finallen), StandardCharsets.UTF_8);
-					assertThat("file incorrect at pos " + size, l, is(last));
-					size += read;
+					final String l = new String(lastgot, StandardCharsets.UTF_8);
+					assertThat("file incorrect at last pos " + size, l, is(last));
+					size += read + read2;
 				}
 				data = new byte[1];
 				if (is.read(data) > 0) {
@@ -466,7 +488,6 @@ public class ShockTests {
 		return sn;
 	}
 
-//	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		if (BasicShockClient.getChunkSize() != 50000000) {
