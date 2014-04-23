@@ -112,8 +112,8 @@ public class CompareChunkSize {
 		
 		private final static double nanoToSec = 1000000000.0;
 		
-		public final List<Long> writes;
-		public final List<Long> reads;
+		private final List<Long> writes;
+		private final List<Long> reads;
 		
 		public Perf(List<Long> writes, List<Long> reads) {
 			this.writes = writes;

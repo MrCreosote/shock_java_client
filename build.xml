@@ -62,7 +62,8 @@
       <include name="us/kbase/common/test/TestException.java"/>
     </javac>
     <!-- Make main jar file-->
-    <jar destfile="${compile.jarfile}" basedir="${classes}"/>
+    <jar destfile="${compile.jarfile}.jar" basedir="${classes}"/>
+    <jar destfile="${compile.jarfile}-sources.jar" basedir="${src}"/>
   </target>
 
   <target name="javadoc" depends="init" description="build javadocs">

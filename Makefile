@@ -11,10 +11,10 @@ ifneq ($(ERR), )
 $(error Tags are ambiguous for this commit: $(TAG))
 endif 
 
-SHOCK-CLIENT-JAR = shock-client-$(TAG).jar
+SHOCK-CLIENT-JAR = shock-client-$(TAG)
 
 ifeq ($(TAG), )
-SHOCK-CLIENT-JAR = shock-client-$(EPOCH)-$(GITCOMMIT).jar
+SHOCK-CLIENT-JAR = shock-client-$(EPOCH)-$(GITCOMMIT)
 endif
 
 # make sure our make test works
