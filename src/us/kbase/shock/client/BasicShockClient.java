@@ -55,6 +55,7 @@ public class BasicShockClient {
 		connmgr.setMaxTotal(1000); //perhaps these should be configurable
 		connmgr.setDefaultMaxPerRoute(1000);
 	}
+	//TODO set timeouts for the client for 1/2m for conn req timeout and std timeout
 	private final static CloseableHttpClient client =
 			HttpClients.custom().setConnectionManager(connmgr).build();
 	private final ObjectMapper mapper = new ObjectMapper();
@@ -208,7 +209,10 @@ public class BasicShockClient {
 		try {
 			return mapper.readValue(resp, clazz).getShockData();
 		} catch (JsonParseException jpe) {
-			throw new RuntimeException(jpe); //something's broken
+			throw new ShockHttpException(
+					response.getStatusLine().getStatusCode(),
+					"Couldn't parse Shock server response to JSON: " +
+					jpe.getLocalizedMessage(), jpe);
 		}
 	}
 	
