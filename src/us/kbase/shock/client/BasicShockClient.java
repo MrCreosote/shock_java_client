@@ -129,7 +129,7 @@ public class BasicShockClient {
 			final String resp = EntityUtils.toString(response.getEntity());
 			shockresp = mapper.readValue(resp, Map.class);
 		} catch (JsonParseException jpe) {
-			throw new InvalidShockUrlException(turl.toString());
+			throw new InvalidShockUrlException(turl.toString(), jpe);
 		} finally {
 			response.close();
 		}
@@ -211,8 +211,10 @@ public class BasicShockClient {
 		} catch (JsonParseException jpe) {
 			throw new ShockHttpException(
 					response.getStatusLine().getStatusCode(),
-					"Couldn't parse Shock server response to JSON: " +
-					jpe.getLocalizedMessage(), jpe);
+					"Invalid Shock response. Server said " +
+					response.getStatusLine().getStatusCode() + " " +
+					response.getStatusLine().getReasonPhrase() + 
+					". JSON parser said " + jpe.getLocalizedMessage(), jpe);
 		}
 	}
 	
