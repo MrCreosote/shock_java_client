@@ -505,58 +505,47 @@ public class BasicShockClient {
 		processRequest(htd, ShockNodeResponse.class); //triggers throwing errors
 	}
 	
-	/**
-	 * Adds a user to a shock node's read access control list (ACL).
-	 * @param id the node to modify.
-	 * @param user the user to be added to the read ACL.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws ShockHttpException if the node ACL could not be altered.
-	 * @throws TokenExpiredException if the client authorization token has
-	 * expired.
+	/** Add users to a node's ACLs.
+	 * @param id the node to update.
+	 * @param users the users to add to the acl.
+	 * @param aclType the acl to which the users should be added.
+	 * @throws TokenExpiredException if the token is expired.
+	 * @throws ShockHttpException if a shock error occurs.
+	 * @throws IOException if an IO error occurs.
 	 */
-	public void setNodeReadable(final ShockNodeId id, final String user)
-			throws IOException, ShockHttpException,TokenExpiredException {
-		if (id == null) {
-			throw new IllegalArgumentException("id cannot be null");
-		}
-		if (user == null || user.equals("")) {
-			throw new IllegalArgumentException(
-					"user cannot be null or the empty string");
-		}
-		final URI targeturl = nodeurl.resolve(id.getId() + ACL_READ.acl + 
-				"?users=" + user);
-		final HttpPut htp = new HttpPut(targeturl);
-		//TODO check errors are ok when Shock changes to ACLs for editing ACLs
-		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
-	}
-	
 	public void addToNodeAcl(
 			final ShockNodeId id,
 			final List<String> users,
 			final ShockACLType aclType)
 			throws TokenExpiredException, ShockHttpException, IOException {
 		//TODO 1 test addACL and remove ACL
-		//TODO 1 docs
-		//TODO 1 check Awe client tests/errors and make sure covering
+		//TODO 1 test remove/add w/o permissions, missing node (note user can remove themselves from acls)
 		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
 		final HttpPut htp = new HttpPut(targeturl);
 		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
 	}
 	
+	/** Remove users to a node's ACLs.
+	 * @param id the node to update.
+	 * @param users the users to remove from the acl.
+	 * @param aclType the acl to which the users should be removed.
+	 * @throws TokenExpiredException if the token is expired.
+	 * @throws ShockHttpException if a shock error occurs.
+	 * @throws IOException if an IO error occurs.
+	 */
 	public void removeFromNodeAcl(
 			final ShockNodeId id,
 			final List<String> users,
 			final ShockACLType aclType)
 			throws TokenExpiredException, ShockHttpException, IOException {
 		//TODO 1 test addACL and remove ACL
-		//TODO 1 docs
-		//TODO 1 check Awe client tests/errors and make sure covering
+		//TODO 1 test remove/add w/o permissions, missing node (note user can remove themselves from acls)
 		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
 		final HttpDelete htd = new HttpDelete(targeturl);
 		processRequest(htd, ShockACLResponse.class); //triggers throwing errors
 	}
 	
-	//TODO look into sharing shock and awe client code
+	// look into sharing shock and awe client code
 	private URI checkACLArgsAndGenURI(
 			final ShockNodeId id,
 			final List<String> users,

@@ -751,49 +751,51 @@ public class ShockTests {
 	@Test
 	public void addAndReadAclViaNode() throws Exception {
 		ShockNode sn = setUpNodeAndCheckAuth(bsc2, true);
+		ShockACLType aclType = new ShockACLType("read");
 		try {
-			sn.setReadable(null);
+			sn.addToNodeAcl(Arrays.asList((String) null), aclType);
 			fail("set a node readable w/ null args");
 		} catch (IllegalArgumentException iae) {
 			assertThat("correct exception", iae.getLocalizedMessage(),
 					is("user cannot be null or the empty string"));
 		}
 		try {
-			sn.setReadable("");
+			sn.addToNodeAcl(Arrays.asList(""), aclType);
 			fail("set a node readable w/ null args");
 		} catch (IllegalArgumentException iae) {
 			assertThat("correct exception", iae.getLocalizedMessage(),
 					is("user cannot be null or the empty string"));
 		}
-		sn.setReadable(otherguy.getUserId());
+		sn.addToNodeAcl(Arrays.asList(otherguy.getUserId()), aclType);
 		checkAuthAndDelete(sn, bsc2, 2);
 	}
 	
 	@Test
 	public void addAndReadAclViaClient() throws Exception {
 		ShockNode sn = setUpNodeAndCheckAuth(bsc2, true);
+		ShockACLType aclType = new ShockACLType("read");
 		try {
-			bsc1.setNodeReadable(null, otherguy.getUserId());
+			bsc1.addToNodeAcl(null, Arrays.asList(otherguy.getUserId()), aclType);
 			fail("set a node readable w/ null args");
-		} catch (IllegalArgumentException iae) {
+		} catch (NullPointerException iae) {
 			assertThat("correct exception", iae.getLocalizedMessage(),
 					is("id cannot be null"));
 		}
 		try {
-			bsc1.setNodeReadable(sn.getId(), null);
+			bsc1.addToNodeAcl(sn.getId(), Arrays.asList((String) null), aclType);
 			fail("set a node readable w/ null args");
 		} catch (IllegalArgumentException iae) {
 			assertThat("correct exception", iae.getLocalizedMessage(),
 					is("user cannot be null or the empty string"));
 		}
 		try {
-			bsc1.setNodeReadable(sn.getId(), "");
+			bsc1.addToNodeAcl(sn.getId(), Arrays.asList(""), aclType);
 			fail("set a node readable w/ null args");
 		} catch (IllegalArgumentException iae) {
 			assertThat("correct exception", iae.getLocalizedMessage(),
 					is("user cannot be null or the empty string"));
 		}
-		bsc1.setNodeReadable(sn.getId(), otherguy.getUserId());
+		bsc1.addToNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), aclType);
 		checkAuthAndDelete(sn, bsc2, 2);
 	}
 	

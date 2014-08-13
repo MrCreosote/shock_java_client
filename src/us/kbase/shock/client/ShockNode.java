@@ -2,6 +2,7 @@ package us.kbase.shock.client;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
 import java.util.Map;
 
 import us.kbase.auth.TokenExpiredException;
@@ -114,20 +115,21 @@ public class ShockNode extends ShockData {
 	}
 	
 	/**
-	 * Proxy for {@link BasicShockClient#setNodeReadable(ShockNodeId, String)
-	 * setNodeReadable()}.
-	 * Adds the user to the node's read access control list (ACL).
-	 * @param user the user to which read permissions shall be granted.
+	 * Proxy for {@link BasicShockClient#addToNodeAcl(ShockNodeId, List,
+	 * ShockACLType)}.
+	 * Adds the users to the node's access control list(s) (ACL).
+	 * @param users the users to which permissions shall be granted.
+	 * @param aclType the acl(s) to which the users shall be added.
 	 * @throws ShockHttpException if the read ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws TokenExpiredException if the client's token has expired.
-	 * @throws UnvalidatedEmailException if the <code>user</code>'s email
-	 * address is unvalidated.
 	 */
 	@JsonIgnore
-	public void setReadable(final String user) throws ShockHttpException,
-			IOException, TokenExpiredException {
-		client.setNodeReadable(getId(), user);
+	public void addToNodeAcl(
+			final List<String> users,
+			final ShockACLType aclType)
+			throws ShockHttpException, IOException, TokenExpiredException {
+		client.addToNodeAcl(getId(), users, aclType);
 	}
 	
 	/**
