@@ -63,7 +63,17 @@
       <src path="${src-common}"/>
       <include name="us/kbase/shock/**/*"/>
       <include name="us/kbase/common/test/TestException.java"/>
+      <include name="us/kbase/common/test/controller/mongo/*"/>
+      <include name="us/kbase/common/test/controller/shock/*"/>
     </javac>
+    <!-- Copy resource files-->
+    <copy todir="${classes}">
+      <fileset dir="${src-common}">
+        <patternset>
+          <include name="**/*.cfg"/>
+        </patternset>
+      </fileset>
+    </copy>
     <!-- Make main jar file-->
     <jar destfile="${compile.jarfile}.jar" basedir="${classes}"/>
     <jar destfile="${compile.jarfile}-sources.jar" basedir="${src}"/>
@@ -91,9 +101,9 @@
     <fail unless="test.user2" message="property test.user2 not set."/>
     <fail unless="test.pwd2" message="property test.pwd2 not set."/>
     <echo message="starting ${package} tests"/>
-    <echo message="testing against jar ${compile.jarfile}"/>
+    <echo message="testing against jar ${compile.jarfile}.jar"/>
     <junit failureproperty="test.failed">
-      <classpath path="${compile.jarfile}"/>
+      <classpath path="${compile.jarfile}.jar"/>
       <classpath refid="compile.classpath"/>
       <formatter type="plain" usefile="false" />
       <sysproperty key="test.shock.exe" value="${test.shock.exe}"/>
