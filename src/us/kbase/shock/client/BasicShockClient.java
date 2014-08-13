@@ -9,8 +9,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -526,6 +528,58 @@ public class BasicShockClient {
 		final HttpPut htp = new HttpPut(targeturl);
 		//TODO check errors are ok when Shock changes to ACLs for editing ACLs
 		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
+	}
+	
+	public void addToNodeAcl(
+			final ShockNodeId id,
+			final List<String> users,
+			final ShockACLType aclType)
+			throws TokenExpiredException, ShockHttpException, IOException {
+		//TODO 1 test addACL and remove ACL
+		//TODO 1 docs
+		//TODO 1 check Awe client tests/errors and make sure covering
+		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
+		final HttpPut htp = new HttpPut(targeturl);
+		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
+	}
+	
+	public void removeFromNodeAcl(
+			final ShockNodeId id,
+			final List<String> users,
+			final ShockACLType aclType)
+			throws TokenExpiredException, ShockHttpException, IOException {
+		//TODO 1 test addACL and remove ACL
+		//TODO 1 docs
+		//TODO 1 check Awe client tests/errors and make sure covering
+		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
+		final HttpDelete htd = new HttpDelete(targeturl);
+		processRequest(htd, ShockACLResponse.class); //triggers throwing errors
+	}
+	
+	//TODO look into sharing shock and awe client code
+	private URI checkACLArgsAndGenURI(
+			final ShockNodeId id,
+			final List<String> users,
+			final ShockACLType aclType) {
+		if (id == null) {
+			throw new NullPointerException("id cannot be null");
+		}
+		if (users == null || users.isEmpty()) {
+			throw new IllegalArgumentException(
+					"user list cannot be null or empty");
+		}
+		if (aclType == null) {
+			throw new NullPointerException("aclType cannot be null");
+		}
+		for (final String user: users) {
+			if (user == null || user.equals("")) {
+				throw new IllegalArgumentException(
+						"user cannot be null or the empty string");
+			}
+		}
+		final URI targeturl = nodeurl.resolve(id.getId() + ACL_READ.acl + 
+				"?users=" + StringUtils.join(users, ","));
+		return targeturl;
 	}
 	
 	/**

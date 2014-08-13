@@ -12,7 +12,10 @@ ANT = 'ant'
 
 CFG_SECTION = 'ShockClientTest'
 
-CONFIG_OPTS = ['test.shock.url',
+CONFIG_OPTS = ['test.shock.exe',
+               'test.mongo.exe',
+               'test.temp.dir',
+               'test.temp.dir.keep',
                'test.user1',
                'test.pwd1',
                'test.user2',

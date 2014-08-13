@@ -9,6 +9,7 @@ import java.io.StringReader;
 import java.io.Writer;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -25,6 +26,7 @@ import static org.junit.Assert.fail;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.input.ReaderInputStream;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -37,6 +39,8 @@ import us.kbase.auth.AuthToken;
 import us.kbase.auth.AuthUser;
 import us.kbase.auth.TokenExpiredException;
 import us.kbase.common.test.TestException;
+import us.kbase.common.test.controllers.mongo.MongoController;
+import us.kbase.common.test.controllers.shock.ShockController;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockACL;
 import us.kbase.shock.client.ShockACLType;
@@ -56,11 +60,30 @@ public class ShockTests {
 	private static BasicShockClient bsc2;
 //	private static BasicShockClient bscNoAuth;
 	private static AuthUser otherguy;
+	
+	private static MongoController mongo;
+	private static ShockController shock;
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
 		System.out.println("Java: " + System.getProperty("java.runtime.version"));
-		URL url = new URL(System.getProperty("test.shock.url"));
+		
+		mongo = new MongoController(ShockTestCommon.getMongoExe(),
+				Paths.get(ShockTestCommon.getTempDir()));
+		System.out.println("Using Mongo temp dir " + mongo.getTempDir());
+		
+		shock = new ShockController(
+				ShockTestCommon.getShockExe(),
+				Paths.get(ShockTestCommon.getTempDir()),
+				"***---fakeuser---***",
+				"localhost:" + mongo.getServerPort(),
+				"ShockTests_ShockDB",
+				"foo",
+				"foo");
+		System.out.println("Using Shock temp dir " + shock.getTempDir());
+		
+		
+		URL url = new URL("http://localhost:" + shock.getServerPort());
 		System.out.println("Testing shock clients pointed at: " + url);
 		String u1 = System.getProperty("test.user1");
 		String u2 = System.getProperty("test.user2");
@@ -96,6 +119,16 @@ public class ShockTests {
 		}
 //		bscNoAuth = new BasicShockClient(url);
 		System.out.println("Set up shock clients");
+	}
+	
+	@AfterClass
+	public static void tearDownClass() throws Exception {
+		if (shock != null) {
+			shock.destroy(ShockTestCommon.getDeleteTempFiles());
+		}
+		if (mongo != null) {
+			mongo.destroy(ShockTestCommon.getDeleteTempFiles());
+		}
 	}
 	
 	@Test
