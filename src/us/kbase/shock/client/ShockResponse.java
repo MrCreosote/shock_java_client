@@ -4,6 +4,8 @@ import java.util.List;
 
 import us.kbase.shock.client.exceptions.ShockAuthorizationException;
 import us.kbase.shock.client.exceptions.ShockHttpException;
+import us.kbase.shock.client.exceptions.ShockIllegalShareException;
+import us.kbase.shock.client.exceptions.ShockIllegalUnshareException;
 import us.kbase.shock.client.exceptions.ShockNoFileException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
 
@@ -32,11 +34,22 @@ abstract class ShockResponse {
 		if (hasError()) {
 			if (status == 401) {
 				throw new ShockAuthorizationException(getStatus(), getError());
-			} else if (status == 400 && getError().equals("Node has no file")) {
-				throw new ShockNoFileException(getStatus(), getError());
-			} else if (status == 400
-					&& getError().equals("Node does not exist")) {
-				throw new ShockNoNodeException(getStatus(), getError());
+			} else if (status == 400) {
+				if (getError().equals("Node has no file")) {
+					throw new ShockNoFileException(getStatus(), getError());
+				} else if (getError().equals("Node does not exist")) {
+					throw new ShockNoNodeException(getStatus(), getError());
+				} else if (getError().equals(
+						"Too many users. Nodes may have only one owner.")) {
+					throw new ShockIllegalShareException(
+							getStatus(), getError());
+				} else if (getError().equals(
+						"Deleting ownership is not a supported request type.")) {
+					throw new ShockIllegalUnshareException(
+							getStatus(), getError());
+				} else {
+					throw new ShockHttpException(getStatus(), getError());
+				}
 			} else {
 				throw new ShockHttpException(getStatus(), getError());
 			}

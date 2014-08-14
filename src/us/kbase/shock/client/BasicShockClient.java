@@ -171,6 +171,14 @@ public class BasicShockClient {
 		this.token = token;
 	}
 	
+	/** Get the auth token used by this client, if any.
+	 * 
+	 * @return the auth token.
+	 */
+	public AuthToken getToken() {
+		return token;
+	}
+	
 	/**
 	 * Check the token's validity.
 	 * @return <code>true</code> if the client has no auth token or the token
@@ -565,8 +573,9 @@ public class BasicShockClient {
 						"user cannot be null or the empty string");
 			}
 		}
-		final URI targeturl = nodeurl.resolve(id.getId() + aclType.acl + 
-				"?users=" + StringUtils.join(users, ","));
+		final URI targeturl = nodeurl.resolve(id.getId() +
+				aclType.getUrlFragmentForAcl() + "?users=" +
+				StringUtils.join(users, ","));
 		return targeturl;
 	}
 	
@@ -602,7 +611,8 @@ public class BasicShockClient {
 	 */
 	public ShockACL getACLs(final ShockNodeId id, final ShockACLType acl) 
 			throws IOException, ShockHttpException, TokenExpiredException {
-		final URI targeturl = nodeurl.resolve(id.getId() + acl.acl);
+		final URI targeturl = nodeurl.resolve(id.getId() +
+				acl.getUrlFragmentForAcl());
 		final HttpGet htg = new HttpGet(targeturl);
 		return (ShockACL)processRequest(htg, ShockACLResponse.class);
 	}

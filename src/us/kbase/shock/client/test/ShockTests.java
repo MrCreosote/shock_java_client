@@ -50,6 +50,9 @@ import us.kbase.shock.client.ShockUserId;
 import us.kbase.shock.client.ShockVersionStamp;
 import us.kbase.shock.client.exceptions.InvalidShockUrlException;
 import us.kbase.shock.client.exceptions.ShockAuthorizationException;
+import us.kbase.shock.client.exceptions.ShockHttpException;
+import us.kbase.shock.client.exceptions.ShockIllegalShareException;
+import us.kbase.shock.client.exceptions.ShockIllegalUnshareException;
 import us.kbase.shock.client.exceptions.ShockNoFileException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
@@ -774,6 +777,17 @@ public class ShockTests {
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failAddAcl(sn, Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
+			
+			failRemoveAcl(bsc1, null, Arrays.asList(otherguy.getUserId()), aclType,
+					new NullPointerException("id cannot be null"));
+			failRemoveAcl(bsc1, sn.getId(), Arrays.asList((String) null), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
+			failRemoveAcl(sn, Arrays.asList((String) null), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
+			failRemoveAcl(bsc1, sn.getId(), Arrays.asList(""), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
+			failRemoveAcl(sn, Arrays.asList(""), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
 
 			String acl = aclType.getType() + " acl";
 			bsc1.addToNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), aclType);
@@ -789,6 +803,35 @@ public class ShockTests {
 			assertThat("removed user from " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID)));
 		}
+		
+		ShockACLType aclType = new ShockACLType("owner");
+		failAddAcl(sn, Arrays.asList(bsc1.getToken().getUserName(), otherguy.getUserId()), aclType,
+				new ShockIllegalShareException(400, "Too many users. Nodes may have only one owner."));
+		failAddAcl(bsc1, sn.getId(), Arrays.asList(bsc1.getToken().getUserName(), otherguy.getUserId()), aclType,
+				new ShockIllegalShareException(400, "Too many users. Nodes may have only one owner."));
+		failRemoveAcl(bsc1, sn.getId(), Arrays.asList(otherguy.getUserId()), aclType,
+				new ShockIllegalUnshareException(400, "Deleting ownership is not a supported request type."));
+		failRemoveAcl(sn, Arrays.asList(otherguy.getUserId()), aclType,
+				new ShockIllegalUnshareException(400, "Deleting ownership is not a supported request type."));
+		
+		String acl = aclType.getType() + " acl";
+		bsc1.addToNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), aclType);
+		assertThat("added user to " + acl, bsc2.getACLs(sn.getId()).getOwner(),
+				is(USER2_SID));
+		//interesting, you can own a shock node but not be able to read it
+		//Jared says he's going to fix this
+		bsc2.addToNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), new ShockACLType("read"));
+		ShockNode sn2 = bsc2.getNode(sn.getId());
+		sn2.addToNodeAcl(Arrays.asList(bsc1.getToken().getUserName()), aclType);
+		assertThat("added user to " + acl, sn.getACLs().getOwner(),
+				is(USER1_SID));
+		sn.removeFromNodeAcl(Arrays.asList(otherguy.getUserId()), new ShockACLType("read"));
+		System.out.println(sn.getACLs());
+		
+		aclType = new ShockACLType("all");
+		bsc1.addToNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), aclType);
+		
+		//TODO all, owner
 	}
 	
 	private List<ShockUserId> getAcls(BasicShockClient cli, ShockNodeId id,
@@ -835,6 +878,31 @@ public class ShockTests {
 			ShockACLType aclType, Exception e) throws Exception {
 		try {
 			sn.addToNodeAcl(users, aclType);
+			fail("removed from acl with bad args");
+		} catch (Exception exp) {
+			assertThat("correct exception type", exp, is(e.getClass()));
+			assertThat("correct exception", exp.getLocalizedMessage(),
+					is(e.getMessage()));
+		} 
+	}
+	
+	private void failRemoveAcl(BasicShockClient cli, ShockNodeId id,
+			List<String> users, ShockACLType aclType, Exception e) throws Exception {
+		try {
+			cli.removeFromNodeAcl(id, users, aclType);
+			fail("removed from acl with bad args");
+		} catch (Exception exp) {
+			assertThat("correct exception type", exp, is(e.getClass()));
+			assertThat("correct exception", exp.getLocalizedMessage(),
+					is(e.getMessage()));
+		}
+	}
+	
+	private void failRemoveAcl(ShockNode sn, List<String> users,
+			ShockACLType aclType, Exception e) throws Exception {
+		try {
+			sn.removeFromNodeAcl(users, aclType);
+			fail("removed from acl with bad args");
 		} catch (Exception exp) {
 			assertThat("correct exception type", exp, is(e.getClass()));
 			assertThat("correct exception", exp.getLocalizedMessage(),
@@ -855,17 +923,6 @@ public class ShockTests {
 					is("User Unauthorized"));
 		}
 		return sn;
-	}
-	
-	private void checkAuthAndDelete(ShockNode sn, BasicShockClient c, int size)
-			throws Exception {
-		assertThat("Setting read perms failed", size, 
-				is(sn.getACLs(new ShockACLType("read")).getRead().size()));
-		sn = bsc1.getNode(sn.getId()); //version stamp changed
-		ShockNode sn2 = c.getNode(sn.getId());
-		assertThat("different users see different nodes", sn.toString(),
-				is(sn2.toString()));
-		sn.delete();
 	}
 	
 	@Test

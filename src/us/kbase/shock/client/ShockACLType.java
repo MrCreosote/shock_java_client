@@ -13,7 +13,6 @@ package us.kbase.shock.client;
  */
 public class ShockACLType {
 
-	final String acl;
 	private final String aclType;
 	/** Denotes a read ACL. */
 	public static final String READ = "read";
@@ -30,8 +29,7 @@ public class ShockACLType {
 	 * Constructs a <code>ShockACLType</code> that represents all ACLs.
 	 */
 	public ShockACLType() {
-		acl = "/acl/";
-		aclType = "all";
+		this(ALL);
 	}
 	
 	/** 
@@ -41,15 +39,15 @@ public class ShockACLType {
 	 * and <code>"delete"</code>.
 	 */
 	public ShockACLType(String type) {
-		if (type == "all") {
-			acl = "/acl/";
-		} else if (type == "read" || type == "write" || type == "delete" ||
-				type == "owner") {
-			acl = "/acl/" + type + "/";
-		} else {
+		if (type != READ && type != WRITE && type != DELETE &&
+				type != OWNER && type != ALL) {
 			throw new IllegalArgumentException(type + " is not a valid acl type");
 		}
 		aclType = type;
+	}
+	
+	String getUrlFragmentForAcl() {
+		return "/acl/" + aclType + "/";
 	}
 	
 	/** 
