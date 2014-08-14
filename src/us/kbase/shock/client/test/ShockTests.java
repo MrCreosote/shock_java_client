@@ -61,6 +61,9 @@ public class ShockTests {
 //	private static BasicShockClient bscNoAuth;
 	private static AuthUser otherguy;
 	
+	private static ShockUserId USER1_SID;
+	private static ShockUserId USER2_SID;
+	
 	private static MongoController mongo;
 	private static ShockController shock;
 
@@ -119,6 +122,8 @@ public class ShockTests {
 		}
 //		bscNoAuth = new BasicShockClient(url);
 		System.out.println("Set up shock clients");
+		USER1_SID = bsc1.addNode().getACLs().getOwner();
+		USER2_SID = bsc2.addNode().getACLs().getOwner();
 	}
 	
 	@AfterClass
@@ -749,86 +754,105 @@ public class ShockTests {
 	}
 	
 	@Test
-	public void addAndReadAclViaNode() throws Exception {
-		ShockNode sn = setUpNodeAndCheckAuth(bsc2, true);
-		ShockACLType aclType = new ShockACLType("read");
-		try {
-			sn.addToNodeAcl(Arrays.asList((String) null), aclType);
-			fail("set a node readable w/ null args");
-		} catch (IllegalArgumentException iae) {
-			assertThat("correct exception", iae.getLocalizedMessage(),
-					is("user cannot be null or the empty string"));
+	public void modifyAcls() throws Exception {
+		ShockNode sn = setUpNodeAndCheckAuth(bsc1, bsc2);
+		ShockACL acls = sn.getACLs();
+		assertThat("user1 is owner", acls.getOwner(), is(USER1_SID));
+		assertThat("only owner in read acl", acls.getRead(), is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in write acl", acls.getWrite(), is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in delete acl", acls.getDelete(), is(Arrays.asList(USER1_SID)));
+		List<String> singleAcls = Arrays.asList("read", "write", "delete");
+		for (String aclTypeString: singleAcls) {
+			ShockACLType aclType = new ShockACLType(aclTypeString);
+			failAddAcl(bsc1, null, Arrays.asList(otherguy.getUserId()), aclType,
+					new NullPointerException("id cannot be null"));
+			failAddAcl(bsc1, sn.getId(), Arrays.asList((String) null), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
+			failAddAcl(sn, Arrays.asList((String) null), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
+			failAddAcl(bsc1, sn.getId(), Arrays.asList(""), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
+			failAddAcl(sn, Arrays.asList(""), aclType,
+					new IllegalArgumentException("user cannot be null or the empty string"));
+
+			String acl = aclType.getType() + " acl";
+			bsc1.addToNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), aclType);
+			assertThat("added user to " + acl, getAcls(bsc1, sn.getId(), aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
+			bsc1.removeFromNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), aclType);
+			assertThat("removed user from " + acl, getAcls(bsc1, sn.getId(), aclType),
+					is(Arrays.asList(USER1_SID)));
+			sn.addToNodeAcl(Arrays.asList(otherguy.getUserId()), aclType);
+			assertThat("added user to " + acl, getAcls(sn, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
+			sn.removeFromNodeAcl(Arrays.asList(otherguy.getUserId()), aclType);
+			assertThat("removed user from " + acl, getAcls(sn, aclType),
+					is(Arrays.asList(USER1_SID)));
 		}
-		try {
-			sn.addToNodeAcl(Arrays.asList(""), aclType);
-			fail("set a node readable w/ null args");
-		} catch (IllegalArgumentException iae) {
-			assertThat("correct exception", iae.getLocalizedMessage(),
-					is("user cannot be null or the empty string"));
-		}
-		sn.addToNodeAcl(Arrays.asList(otherguy.getUserId()), aclType);
-		checkAuthAndDelete(sn, bsc2, 2);
 	}
 	
-	@Test
-	public void addAndReadAclViaClient() throws Exception {
-		ShockNode sn = setUpNodeAndCheckAuth(bsc2, true);
-		ShockACLType aclType = new ShockACLType("read");
-		try {
-			bsc1.addToNodeAcl(null, Arrays.asList(otherguy.getUserId()), aclType);
-			fail("set a node readable w/ null args");
-		} catch (NullPointerException iae) {
-			assertThat("correct exception", iae.getLocalizedMessage(),
-					is("id cannot be null"));
+	private List<ShockUserId> getAcls(BasicShockClient cli, ShockNodeId id,
+			ShockACLType type) throws Exception {
+		if (type.getType().equals("read")) {
+			return cli.getACLs(id).getRead();
 		}
-		try {
-			bsc1.addToNodeAcl(sn.getId(), Arrays.asList((String) null), aclType);
-			fail("set a node readable w/ null args");
-		} catch (IllegalArgumentException iae) {
-			assertThat("correct exception", iae.getLocalizedMessage(),
-					is("user cannot be null or the empty string"));
+		if (type.getType().equals("write")) {
+			return cli.getACLs(id).getWrite();
 		}
-		try {
-			bsc1.addToNodeAcl(sn.getId(), Arrays.asList(""), aclType);
-			fail("set a node readable w/ null args");
-		} catch (IllegalArgumentException iae) {
-			assertThat("correct exception", iae.getLocalizedMessage(),
-					is("user cannot be null or the empty string"));
+		if (type.getType().equals("delete")) {
+			return cli.getACLs(id).getDelete();
 		}
-		bsc1.addToNodeAcl(sn.getId(), Arrays.asList(otherguy.getUserId()), aclType);
-		checkAuthAndDelete(sn, bsc2, 2);
+		throw new RuntimeException("can't handle that acl type here");
 	}
 	
-//	@Test
-//	public void addAndReadAclViaClientNoAuth() throws Exception {
-//		ShockNode sn = setUpNodeAndCheckAuth(bscNoAuth, false);
-//		bsc1.setNodeWorldReadable(sn.getId());
-//		checkAuthAndDelete(sn, bscNoAuth, 0);
-//	}
-//	
-//	@Test
-//	public void addAndReadAclViaNodeNoAuth() throws Exception {
-//		ShockNode sn = setUpNodeAndCheckAuth(bscNoAuth, false);
-//		sn.setWorldReadable();
-//		checkAuthAndDelete(sn, bscNoAuth, 0);
-//	}
-	
-	private ShockNode setUpNodeAndCheckAuth(BasicShockClient c, boolean auth)
-			throws Exception{
-		ShockNode sn = bsc1.addNode();
-		String expected;
-		if (auth) {
-			expected = "User Unauthorized";
-		} else {
-			//if Authorization.read = false, then you get a No Auth error
-			expected = "User Unauthorized"; //"No Authorization";
+	private List<ShockUserId> getAcls(ShockNode sn,
+			ShockACLType type) throws Exception {
+		if (type.getType().equals("read")) {
+			return sn.getACLs().getRead();
 		}
+		if (type.getType().equals("write")) {
+			return sn.getACLs().getWrite();
+		}
+		if (type.getType().equals("delete")) {
+			return sn.getACLs().getDelete();
+		}
+		throw new RuntimeException("can't handle that acl type here");
+	}
+	
+	private void failAddAcl(BasicShockClient cli, ShockNodeId id,
+			List<String> users, ShockACLType aclType, Exception e) throws Exception {
 		try {
-			c.getNode(sn.getId());
+			cli.addToNodeAcl(id, users, aclType);
+			fail("added to acl with bad args");
+		} catch (Exception exp) {
+			assertThat("correct exception type", exp, is(e.getClass()));
+			assertThat("correct exception", exp.getLocalizedMessage(),
+					is(e.getMessage()));
+		}
+	}
+	
+	private void failAddAcl(ShockNode sn, List<String> users,
+			ShockACLType aclType, Exception e) throws Exception {
+		try {
+			sn.addToNodeAcl(users, aclType);
+		} catch (Exception exp) {
+			assertThat("correct exception type", exp, is(e.getClass()));
+			assertThat("correct exception", exp.getLocalizedMessage(),
+					is(e.getMessage()));
+		} 
+	}
+	
+	
+	private ShockNode setUpNodeAndCheckAuth(BasicShockClient source,
+			BasicShockClient check)
+			throws Exception {
+		ShockNode sn = source.addNode();
+		try {
+			check.getNode(sn.getId());
 			fail("Node is readable with no permissions");
 		} catch (ShockAuthorizationException aue) {
 			assertThat("auth exception string is correct", aue.getLocalizedMessage(),
-					is(expected));
+					is("User Unauthorized"));
 		}
 		return sn;
 	}

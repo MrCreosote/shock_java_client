@@ -59,4 +59,13 @@ public class ShockACLType {
 	public String getType() {
 		return aclType;
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("ShockACLType [aclType=");
+		builder.append(aclType);
+		builder.append("]");
+		return builder.toString();
+	}
 }

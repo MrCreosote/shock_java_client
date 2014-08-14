@@ -66,7 +66,6 @@ public class BasicShockClient {
 	private static final String AUTH = "Authorization";
 	private static final String OAUTH = "OAuth ";
 	private static final String ATTRIBFILE = "attribs";
-	private static final ShockACLType ACL_READ = new ShockACLType("read");
 	
 	private static int CHUNK_SIZE = 50000000; //~100 Mb
 	
@@ -566,7 +565,7 @@ public class BasicShockClient {
 						"user cannot be null or the empty string");
 			}
 		}
-		final URI targeturl = nodeurl.resolve(id.getId() + ACL_READ.acl + 
+		final URI targeturl = nodeurl.resolve(id.getId() + aclType.acl + 
 				"?users=" + StringUtils.join(users, ","));
 		return targeturl;
 	}
