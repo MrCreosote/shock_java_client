@@ -525,8 +525,6 @@ public class BasicShockClient {
 			final List<String> users,
 			final ShockACLType aclType)
 			throws TokenExpiredException, ShockHttpException, IOException {
-		//TODO 1 test addACL and remove ACL
-		//TODO 1 test remove/add w/o permissions, missing node (note user can remove themselves from acls)
 		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
 		final HttpPut htp = new HttpPut(targeturl);
 		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
@@ -545,8 +543,6 @@ public class BasicShockClient {
 			final List<String> users,
 			final ShockACLType aclType)
 			throws TokenExpiredException, ShockHttpException, IOException {
-		//TODO 1 test addACL and remove ACL
-		//TODO 1 test remove/add w/o permissions, missing node (note user can remove themselves from acls)
 		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
 		final HttpDelete htd = new HttpDelete(targeturl);
 		processRequest(htd, ShockACLResponse.class); //triggers throwing errors

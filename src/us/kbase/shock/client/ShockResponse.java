@@ -40,7 +40,9 @@ abstract class ShockResponse {
 				} else if (getError().equals("Node does not exist")) {
 					throw new ShockNoNodeException(getStatus(), getError());
 				} else if (getError().equals(
-						"Too many users. Nodes may have only one owner.")) {
+						"Too many users. Nodes may have only one owner.") ||
+						getError().equals(
+								"Only the node owner can edit/view node ACL's")) {
 					throw new ShockIllegalShareException(
 							getStatus(), getError());
 				} else if (getError().equals(

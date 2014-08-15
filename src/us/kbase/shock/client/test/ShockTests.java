@@ -859,7 +859,22 @@ public class ShockTests {
 					getAcls(bsc1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
 		}
-		//TODO all, owner
+		
+		failAddAcl(bsc2, sn.getId(), Arrays.asList(otherguy.getUserId()), allType,
+				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
+		failAddAcl(sn2, Arrays.asList(otherguy.getUserId()), allType,
+				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
+		failRemoveAcl(bsc2, sn.getId(), Arrays.asList(otherguy.getUserId()), allType,
+				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
+		failRemoveAcl(sn2, Arrays.asList(otherguy.getUserId()), allType,
+				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
+		
+		ShockNodeId id = sn.getId();
+		sn.delete();
+		//TODO fix this if Jared fixes the error
+		failAddAcl(bsc1, id, Arrays.asList(otherguy.getUserId()), allType,
+				new ShockHttpException(500, "Err@node_Read:LoadNode: not found"));
+		
 	}
 	
 	private List<ShockUserId> getAcls(BasicShockClient cli, ShockNodeId id,
@@ -906,7 +921,7 @@ public class ShockTests {
 			ShockACLType aclType, Exception e) throws Exception {
 		try {
 			sn.addToNodeAcl(users, aclType);
-			fail("removed from acl with bad args");
+			fail("addded to acl with bad args");
 		} catch (Exception exp) {
 			assertThat("correct exception type", exp, is(e.getClass()));
 			assertThat("correct exception", exp.getLocalizedMessage(),
