@@ -51,15 +51,7 @@ public class BasicShockClient {
 	
 	private final URI baseurl;
 	private final URI nodeurl;
-	private final static PoolingHttpClientConnectionManager connmgr =
-			new PoolingHttpClientConnectionManager();
-	static {
-		connmgr.setMaxTotal(1000); //perhaps these should be configurable
-		connmgr.setDefaultMaxPerRoute(1000);
-	}
-	//TODO set timeouts for the client for 1/2m for conn req timeout and std timeout
-	private final static CloseableHttpClient client =
-			HttpClients.custom().setConnectionManager(connmgr).build();
+	private static CloseableHttpClient client;
 	private final ObjectMapper mapper = new ObjectMapper();
 	private AuthToken token = null;
 	
@@ -81,8 +73,15 @@ public class BasicShockClient {
 	
 	private static synchronized void createHttpClient(
 			final boolean allowSelfSignedCerts) {
-		//TODO create client here
-		//abort if client already exists
+		if (client != null) {
+			return; //already done
+		}
+		final PoolingHttpClientConnectionManager connmgr =
+				new PoolingHttpClientConnectionManager();
+		connmgr.setMaxTotal(1000); //perhaps these should be configurable
+		connmgr.setDefaultMaxPerRoute(1000);
+		//TODO set timeouts for the client for 1/2m for conn req timeout and std timeout
+		client = HttpClients.custom().setConnectionManager(connmgr).build();
 	}
 	
 	/**
