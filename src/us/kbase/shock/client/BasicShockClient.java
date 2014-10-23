@@ -67,7 +67,7 @@ public class BasicShockClient {
 	private static final String OAUTH = "OAuth ";
 	private static final String ATTRIBFILE = "attribs";
 	
-	private static int CHUNK_SIZE = 50000000; //~100 Mb
+	private static int CHUNK_SIZE = 50000000; //~50 Mb
 	
 	/** Get the size of the upload / download chunk size.
 	 * @return the size of the file chunks sent/received from the Shock server.
@@ -77,6 +77,24 @@ public class BasicShockClient {
 	}
 	private static String getDownloadURLPrefix() {
 		return "/?download&index=size&chunk_size=" + CHUNK_SIZE + "&part=";
+	}
+	
+	private static synchronized void createHttpClient(
+			final boolean allowSelfSignedCerts) {
+		//TODO create client here
+		//abort if client already exists
+	}
+	
+	/**
+	 * Create a new shock client.
+	 * @param url the location of the shock server.
+	 * @throws IOException if an IO problem occurs.
+	 * @throws InvalidShockUrlException if the <code>url</code> does not reference
+	 * a shock server.
+	 */
+	public BasicShockClient(final URL url)
+			throws IOException, InvalidShockUrlException {
+		this(url, false);
 	}
 	
 	/**
@@ -92,26 +110,17 @@ public class BasicShockClient {
 	public BasicShockClient(final URL url, final AuthToken token)
 			throws IOException, InvalidShockUrlException,
 			TokenExpiredException, ShockHttpException {
-		this(url);
-		updateToken(token);
-		if (token != null) { // test shock config/auth etc.
-			final ShockNode sn = addNode();
-			sn.delete();
-		}
+		this(url, token, false);
 	}
 	
-	/**
-	 * Create a new shock client.
-	 * @param url the location of the shock server.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws InvalidShockUrlException if the <code>url</code> does not reference
-	 * a shock server.
-	 */
-	@SuppressWarnings("unchecked")
-	public BasicShockClient(final URL url) throws IOException, 
-			InvalidShockUrlException {
-
-		mapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
+	//TODO docs
+	public BasicShockClient(final URL url, boolean allowSelfSignedCerts)
+			throws InvalidShockUrlException, IOException {
+		
+		createHttpClient(allowSelfSignedCerts);
+		
+		mapper.enable(
+				DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
 		
 		String turl = url.getProtocol() + "://" + url.getAuthority()
 				+ url.getPath();
@@ -128,7 +137,9 @@ public class BasicShockClient {
 		final Map<String, Object> shockresp;
 		try {
 			final String resp = EntityUtils.toString(response.getEntity());
-			shockresp = mapper.readValue(resp, Map.class);
+			@SuppressWarnings("unchecked")
+			Map<String, Object> respobj = mapper.readValue(resp, Map.class);
+			shockresp = respobj;
 		} catch (JsonParseException jpe) {
 			throw new InvalidShockUrlException(turl.toString(), jpe);
 		} finally {
@@ -152,6 +163,21 @@ public class BasicShockClient {
 			throw new Error(use); //something went badly wrong 
 		}
 		nodeurl = baseurl.resolve("node/");
+	}
+	
+	//TODO docs
+	public BasicShockClient(
+			final URL url,
+			final AuthToken token,
+			boolean allowSelfSignedCerts)
+			throws TokenExpiredException, InvalidShockUrlException,
+			ShockHttpException, IOException {
+		this(url, allowSelfSignedCerts);
+		updateToken(token);
+		if (token != null) { // test shock config/auth etc.
+			final ShockNode sn = addNode();
+			sn.delete();
+		}
 	}
 	
 	/**
