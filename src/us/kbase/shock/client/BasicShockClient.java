@@ -8,6 +8,9 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,13 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLContextBuilder;
+import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -76,12 +86,47 @@ public class BasicShockClient {
 		if (client != null) {
 			return; //already done
 		}
-		final PoolingHttpClientConnectionManager connmgr =
-				new PoolingHttpClientConnectionManager();
-		connmgr.setMaxTotal(1000); //perhaps these should be configurable
-		connmgr.setDefaultMaxPerRoute(1000);
-		//TODO set timeouts for the client for 1/2m for conn req timeout and std timeout
-		client = HttpClients.custom().setConnectionManager(connmgr).build();
+		if (allowSelfSignedCerts) {
+			//http://stackoverflow.com/questions/19517538/ignoring-ssl-certificate-in-apache-httpclient-4-3
+			final SSLConnectionSocketFactory sslsf;
+			try {
+				final SSLContextBuilder builder = new SSLContextBuilder();
+				builder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
+				sslsf = new SSLConnectionSocketFactory(builder.build());
+			} catch (NoSuchAlgorithmException e) {
+				throw new RuntimeException("Unable to build http client", e);
+			} catch (KeyStoreException e) {
+				throw new RuntimeException("Unable to build http client", e);
+			} catch (KeyManagementException e) {
+				throw new RuntimeException("Unable to build http client", e);
+			}
+
+			final Registry<ConnectionSocketFactory> registry =
+					RegistryBuilder.<ConnectionSocketFactory>create()
+					.register("http", new PlainConnectionSocketFactory())
+					.register("https", sslsf)
+					.build();
+
+			final PoolingHttpClientConnectionManager cm =
+					new PoolingHttpClientConnectionManager(registry);
+			cm.setMaxTotal(1000); //perhaps these should be configurable
+			cm.setDefaultMaxPerRoute(1000);
+
+			//TODO set timeouts for the client for 1/2m for conn req timeout and std timeout
+			client = HttpClients.custom()
+					.setSSLSocketFactory(sslsf)
+					.setConnectionManager(cm)
+					.build();
+		} else {
+			final PoolingHttpClientConnectionManager cm =
+					new PoolingHttpClientConnectionManager();
+			cm.setMaxTotal(1000); //perhaps these should be configurable
+			cm.setDefaultMaxPerRoute(1000);
+			//TODO set timeouts for the client for 1/2m for conn req timeout and std timeout
+			client = HttpClients.custom()
+					.setConnectionManager(cm)
+					.build();
+		}
 	}
 	
 	/**
@@ -150,14 +195,8 @@ public class BasicShockClient {
 		if (!shockresp.get("id").equals("Shock")) {
 			throw new InvalidShockUrlException(turl.toString());
 		}
-		URL shockurl = new URL(shockresp.get("url").toString());
-		//https->http is caused by the router, not shock, per Jared
-		if (url.getProtocol().equals("https")) {
-			shockurl = new URL("https", shockurl.getAuthority(),
-					shockurl.getPort(), shockurl.getFile());
-		}
 		try {
-			baseurl = shockurl.toURI();
+			baseurl = new URL(turl).toURI();
 		} catch (URISyntaxException use) {
 			throw new Error(use); //something went badly wrong 
 		}
