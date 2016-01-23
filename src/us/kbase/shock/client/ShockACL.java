@@ -2,6 +2,9 @@ package us.kbase.shock.client;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Represents one or more of the access control lists (ACLs) for a shock
@@ -22,6 +25,9 @@ public class ShockACL extends ShockData {
 	private List<ShockUserId> read;
 	private List<ShockUserId> write;
 	private List<ShockUserId> delete;
+	//may do something with this later. For now just for compatibility.
+	@JsonProperty("public")
+	private Map<String, Boolean> public_;
 	
 	private ShockACL(){}
 

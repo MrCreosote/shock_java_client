@@ -59,6 +59,8 @@ import us.kbase.shock.client.exceptions.ShockNoFileException;
  */
 public class BasicShockClient {
 	
+	// might want semver here?
+	private final String version;
 	private final URI baseurl;
 	private final URI nodeurl;
 	private static CloseableHttpClient client;
@@ -195,6 +197,7 @@ public class BasicShockClient {
 		if (!shockresp.get("id").equals("Shock")) {
 			throw new InvalidShockUrlException(turl.toString());
 		}
+		version = (String) shockresp.get("version");
 		try {
 			baseurl = new URL(turl).toURI();
 		} catch (URISyntaxException use) {
@@ -261,6 +264,13 @@ public class BasicShockClient {
 	 */
 	public URL getShockUrl() {
 		return uriToUrl(baseurl);
+	}
+	
+	/** Get the version of the Shock server.
+	 * @return the version.
+	 */
+	public String getShockVersion() {
+		return version;
 	}
 	
 	private <T extends ShockResponse> ShockData

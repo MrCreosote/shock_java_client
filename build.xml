@@ -7,7 +7,6 @@
   <!-- set global properties for this build -->
   <property name="package" value="shock java client"/>
   <property name="src" location="src"/>
-  <property name="src-common" location="../java_common/src"/>
   <property name="jardir" location="../jars/lib/jars/"/>
   <property name="classes" location="classes"/>
   <property name="docs" location="docs"/>
@@ -18,7 +17,7 @@
     <include name="apache_commons/http/httpclient-4.3.1.jar"/>
     <include name="apache_commons/http/httpcore-4.3.jar"/>
     <include name="apache_commons/http/httpmime-4.3.1.jar"/>
-    <include name="kbase/auth/kbase-auth-1380919426-d35c17d.jar"/>
+    <include name="kbase/auth/kbase-auth-0.3.1.jar"/>
     <include name="jackson/jackson-annotations-2.2.3.jar"/>
     <include name="jackson/jackson-core-2.2.3.jar"/>
     <include name="jackson/jackson-databind-2.2.3.jar"/>
@@ -26,13 +25,15 @@
 
   <fileset dir="${jardir}" id="testlib">
     <include name="easystream/easystream-1.2.13.jar"/>
-    <include name="slf4j/slf4j-api-1.6.1.jar"/>
+    <include name="slf4j/slf4j-api-1.7.7.jar"/>
     <include name="junit/junit-4.9.jar"/>
     <include name="apache_commons/commons-codec-1.8.jar"/>
     <include name="apache_commons/commons-io-2.4.jar"/>
     <include name="apache_commons/commons-collections-3.2.1.jar"/>
     <include name="apache_commons/commons-lang-2.4.jar"/>
     <include name="apache_commons/velocity-1.7.jar"/>
+    <include name="mongo/mongo-java-driver-2.13.3.jar"/>
+    <include name="kbase/common/kbase-common-0.0.15.jar"/>
   </fileset>
 	
   <union id="shocktests">
@@ -60,20 +61,7 @@
     <javac destdir="${classes}" includeantruntime="false" target="1.6" source="1.6"
       debug="true" classpathref="compile.classpath">
       <src path="${src}"/>
-      <src path="${src-common}"/>
-      <include name="us/kbase/shock/**/*"/>
-      <include name="us/kbase/common/test/TestException.java"/>
-      <include name="us/kbase/common/test/controller/mongo/*"/>
-      <include name="us/kbase/common/test/controller/shock/*"/>
     </javac>
-    <!-- Copy resource files-->
-    <copy todir="${classes}">
-      <fileset dir="${src-common}">
-        <patternset>
-          <include name="**/*.cfg"/>
-        </patternset>
-      </fileset>
-    </copy>
     <!-- Make main jar file-->
     <jar destfile="${compile.jarfile}.jar" basedir="${classes}"/>
     <jar destfile="${compile.jarfile}-sources.jar" basedir="${src}"/>
