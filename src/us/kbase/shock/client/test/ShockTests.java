@@ -1,5 +1,6 @@
 package us.kbase.shock.client.test;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -208,6 +209,19 @@ public class ShockTests {
 		
 	}
 
+	/*
+	@Test
+	public void trystuffout() throws Exception {
+		
+		String exampleString = "foo";
+		
+		InputStream stream = new ByteArrayInputStream(
+				exampleString.getBytes(StandardCharsets.UTF_8));
+		ShockNode foo = BSC1.addNode(stream, "myfile", "foo");
+		System.out.println(foo);
+	}
+	*/
+	
 	@Test
 	public void addGetDeleteNodeBasic() throws Exception {
 		addGetDeleteNodeBasic(BSC1);
@@ -709,8 +723,6 @@ public class ShockTests {
 	
 	@Test
 	public void ids() throws Exception {
-		//will throw exception if doesn't process good uuid
-		new ShockUserId("cbf19927-1e04-456c-b2c3-812edd90fa68");
 		ShockNodeId id1 = new ShockNodeId("cbf19927-1e04-456c-b2c3-812edd90fa68");
 		ShockNodeId id2 = new ShockNodeId("cbf19927-1e04-456c-b2c3-812edd90fa68");
 		assertTrue("id equality failed", id1.equals(id1));
@@ -725,15 +737,6 @@ public class ShockTests {
 			try {
 				new ShockNodeId(uuid);
 				fail("Node id accepted invalid id string " + uuid);
-			} catch (IllegalArgumentException iae) {
-				assertThat("Bad exception message", iae.getLocalizedMessage(),
-						is("id must be a UUID hex string"));
-			}
-		}
-		for (String uuid: badUUIDs) {
-			try {
-				new ShockUserId(uuid);
-				fail("User id accepted invalid id string " + uuid);
 			} catch (IllegalArgumentException iae) {
 				assertThat("Bad exception message", iae.getLocalizedMessage(),
 						is("id must be a UUID hex string"));
@@ -820,16 +823,30 @@ public class ShockTests {
 					new IllegalArgumentException("user cannot be null or the empty string"));
 
 			String acl = aclType.getType() + " acl";
-			BSC1.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()), aclType);
+			
+			ShockACL retacl = BSC1.addToNodeAcl(sn.getId(),
+					Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("added user to " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
-			BSC1.removeFromNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()), aclType);
+			
+			retacl = BSC1.removeFromNodeAcl(sn.getId(),
+					Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("removed user from " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
-			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
+			
+			retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("added user to " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
-			sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
+			
+			retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("removed user from " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID)));
 		}
@@ -848,51 +865,80 @@ public class ShockTests {
 		//TODO NOW 4 coverage
 		//TODO NOW 5 update readme with tested versions & short description, change to md
 		//TODO NOW 5 update release notes
-		//TODO NOW 4 test against shock 0.8.23, 0.9.6, 0.9.12
+		//TODO NOW 3 test against shock 0.8.23, 0.9.6, 0.9.12
 		//TODO NOW 6 build docs on bare system, instructions
-		//TODO NOW 2 use verbose for ACLs always
 		
 		String owneracl = ownerType.getType() + " acl";
-		BSC1.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()), ownerType);
-		assertThat("added user to " + owneracl, BSC2.getACLs(sn.getId()).getOwner(),
+		ShockACL retacl = BSC1.addToNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), ownerType);
+		assertThat("added user to " + owneracl, retacl.getOwner(),
 				is(USER2_SID));
+		assertThat("added user to " + owneracl,
+				BSC2.getACLs(sn.getId()).getOwner(), is(USER2_SID));
+		
+		assertThat("username correct", retacl.getOwner().getUsername(),
+				is(USER2_SID.getUsername()));
+		if (!VERSION.satisfies(SHOCK_V0_8)) {
+			assertThat("username correct", retacl.getOwner().getUsername(),
+					is(USER2.getUserId()));
+		}
+		assertThat("user id correct", retacl.getOwner().getID(),
+				is(USER2_SID.getID()));
 		if (VERSION.satisfies(SHOCK_V0_8)) {
 			//you can own a shock node but not be able to read it
 			BSC2.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()),
 					new ShockACLType("read"));
 		}
 		ShockNode sn2 = BSC2.getNode(sn.getId());
-		sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()), ownerType);
+		retacl = sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()),
+				ownerType);
+		assertThat("added user to " + owneracl, retacl.getOwner(),
+				is(USER1_SID));
 		assertThat("added user to " + owneracl, sn.getACLs().getOwner(),
 				is(USER1_SID));
-		sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), new ShockACLType("read"));
+		sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()),
+				new ShockACLType("read"));
 		
 		
 		ShockACLType allType = new ShockACLType("all");
-		BSC1.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()), allType);
+		retacl = BSC1.addToNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), allType);
 		for (String aclTypeString: singleAcls) {
 			ShockACLType aclType = new ShockACLType(aclTypeString);
+			assertThat("added user to " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 		}
-		BSC1.removeFromNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()), allType);
+		retacl = BSC1.removeFromNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), allType);
 		for (String aclTypeString: singleAcls) {
 			ShockACLType aclType = new ShockACLType(aclTypeString);
+			assertThat("removed user from " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
 		}
-		sn.addToNodeAcl(Arrays.asList(USER2.getUserId()), allType);
+		retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()), allType);
 		for (String aclTypeString: singleAcls) {
 			ShockACLType aclType = new ShockACLType(aclTypeString);
+			assertThat("added user to " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 		}
-		sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), allType);
+		retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), allType);
 		for (String aclTypeString: singleAcls) {
 			ShockACLType aclType = new ShockACLType(aclTypeString);
+			assertThat("removed user from " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
@@ -914,8 +960,32 @@ public class ShockTests {
 					new ShockIllegalShareException(400, failAddErr));
 			failRemoveAcl(sn2, Arrays.asList(USER2.getUserId()), allType,
 					new ShockIllegalShareException(400, failAddErr));
+		} else {
+			// test removing self from ACLs
+			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+					new ShockACLType());
+			for (String acltype: singleAcls) {
+				ShockACLType aclt = new ShockACLType(acltype);
+				ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
+						Arrays.asList(USER2.getUserId()), aclt);
+				assertThat("removed user from " + aclt.getType() + " acl",
+						getAcls(newacl, aclt),
+						is(Arrays.asList(USER1_SID)));
+				assertThat("removed user from " + aclt.getType() + " acl",
+						getAcls(BSC1, sn.getId(), aclt),
+						is(Arrays.asList(USER1_SID)));
+			}
+			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+					new ShockACLType());
+			ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
+					Arrays.asList(USER2.getUserId()), allType);
+			for (String acltype: singleAcls) {
+				ShockACLType aclt = new ShockACLType(acltype);
+				assertThat("removed user from " + aclt.getType() + " acl",
+						getAcls(newacl, aclt),
+						is(Arrays.asList(USER1_SID)));
+			}
 		}
-		//TODO NOW 3 test removing self from acl for 0.9.6
 		
 		ShockNodeId id = sn.getId();
 		sn.delete();
@@ -929,6 +999,19 @@ public class ShockTests {
 		
 	}
 	
+	private List<ShockUserId> getAcls(ShockACL acl, ShockACLType type) {
+		if (type.getType().equals("read")) {
+			return acl.getRead();
+		}
+		if (type.getType().equals("write")) {
+			return acl.getWrite();
+		}
+		if (type.getType().equals("delete")) {
+			return acl.getDelete();
+		}
+		throw new RuntimeException("can't handle that acl type here");
+	}
+
 	private List<ShockUserId> getAcls(BasicShockClient cli, ShockNodeId id,
 			ShockACLType type) throws Exception {
 		if (type.getType().equals("read")) {

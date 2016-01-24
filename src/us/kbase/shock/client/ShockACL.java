@@ -69,30 +69,55 @@ public class ShockACL extends ShockData {
 		return new ArrayList<ShockUserId>(delete);
 	}
 	
-	/* (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
 	@Override
-	public boolean equals(Object obj) {
-		//this is repulsive. Rethink this later.
-		if (this == obj) {return true;}
-		if (!(obj instanceof ShockACL)) {return false;}
-		ShockACL acl = (ShockACL)obj;
-		if ((this.owner == null ^ acl.owner == null) ||
-			(this.read == null ^ acl.read == null) ||
-			(this.write == null ^ acl.write == null) ||
-			(this.delete == null ^ acl.delete == null)) {
-			return false;
-		}
-		return ((this.owner == null && acl.owner == null) || this.owner.equals(acl.owner)) &&
-				((this.read == null && acl.read == null) || this.read.equals(acl.read)) &&
-				((this.write == null && acl.write == null) || this.write.equals(acl.write)) &&
-				((this.delete == null && acl.delete == null) || this.delete.equals(acl.delete));
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((delete == null) ? 0 : delete.hashCode());
+		result = prime * result + ((owner == null) ? 0 : owner.hashCode());
+		result = prime * result + ((public_ == null) ? 0 : public_.hashCode());
+		result = prime * result + ((read == null) ? 0 : read.hashCode());
+		result = prime * result + ((write == null) ? 0 : write.hashCode());
+		return result;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ShockACL other = (ShockACL) obj;
+		if (delete == null) {
+			if (other.delete != null)
+				return false;
+		} else if (!delete.equals(other.delete))
+			return false;
+		if (owner == null) {
+			if (other.owner != null)
+				return false;
+		} else if (!owner.equals(other.owner))
+			return false;
+		if (public_ == null) {
+			if (other.public_ != null)
+				return false;
+		} else if (!public_.equals(other.public_))
+			return false;
+		if (read == null) {
+			if (other.read != null)
+				return false;
+		} else if (!read.equals(other.read))
+			return false;
+		if (write == null) {
+			if (other.write != null)
+				return false;
+		} else if (!write.equals(other.write))
+			return false;
+		return true;
+	}
+
 	@Override
 	public String toString() {
 		return "ShockACL [owner=" + owner + ", read=" + read + ", write="

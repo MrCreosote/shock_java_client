@@ -121,18 +121,19 @@ public class ShockNode extends ShockData {
 	 * ShockACLType)}.
 	 * Adds the users to the node's access control list(s) (ACL).
 	 * @param users the users to which permissions shall be granted.
-	 * @param aclType the acl(s) to which the users shall be added.
+	 * @param aclType the ACL(s) to which the users shall be added.
+	 * @return the new ACL.
 	 * @throws ShockHttpException if the read ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
-	public void addToNodeAcl(
+	public ShockACL addToNodeAcl(
 			final List<String> users,
 			final ShockACLType aclType)
 			throws ShockHttpException, IOException, TokenExpiredException {
 		checkDeleted();
-		client.addToNodeAcl(getId(), users, aclType);
+		return client.addToNodeAcl(getId(), users, aclType);
 	}
 	
 	/**
@@ -140,18 +141,19 @@ public class ShockNode extends ShockData {
 	 * ShockACLType)}.
 	 * Removes the users from the node's access control list(s) (ACL).
 	 * @param users the users from which permissions shall be removed.
-	 * @param aclType the acl(s) from which the users shall be removed.
+	 * @param aclType the ACL(s) from which the users shall be removed.
+	 * @return the new ACL.
 	 * @throws ShockHttpException if the read ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
-	public void removeFromNodeAcl(
+	public ShockACL removeFromNodeAcl(
 			final List<String> users,
 			final ShockACLType aclType)
 			throws ShockHttpException, IOException, TokenExpiredException {
 		checkDeleted();
-		client.removeFromNodeAcl(getId(), users, aclType);
+		return client.removeFromNodeAcl(getId(), users, aclType);
 	}
 	
 	/**

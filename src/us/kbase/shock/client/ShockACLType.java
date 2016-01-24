@@ -12,6 +12,8 @@ package us.kbase.shock.client;
  *
  */
 public class ShockACLType {
+	
+	//TODO this should be an enum
 
 	private final String aclType;
 	/** Denotes a read ACL. */

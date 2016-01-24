@@ -347,7 +347,8 @@ public class BasicShockClient {
 		}
 		final URI targeturl = nodeurl.resolve(id.getId());
 		final HttpGet htg = new HttpGet(targeturl);
-		final ShockNode sn = (ShockNode)processRequest(htg, ShockNodeResponse.class);
+		final ShockNode sn = (ShockNode) processRequest
+				(htg, ShockNodeResponse.class);
 		sn.addClient(this);
 		return sn;
 	}
@@ -547,6 +548,12 @@ public class BasicShockClient {
 			if (format != null) {
 				mpeb.addTextBody("format", format);
 			}
+			// causes an error for 0.8.23, makes node immutable
+			// doesn't work in 0.9.6
+			// TODO NOW 2 test in 0.9.12 and note results. Add when 0.8 drops support if it works.
+//			if (filename != null && !filename.isEmpty()) {
+//				mpeb.addTextBody("file_name", filename);
+//			}
 			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}
@@ -561,7 +568,7 @@ public class BasicShockClient {
 					filename);
 			htp.setEntity(mpeb.build());
 			processRequest(htp, ShockNodeResponse.class);
-			b = new byte[CHUNK_SIZE];
+			b = new byte[CHUNK_SIZE]; // could just zero it
 			read = read(file, b);
 			chunks++;
 		}
@@ -606,38 +613,40 @@ public class BasicShockClient {
 	
 	/** Add users to a node's ACLs.
 	 * @param id the node to update.
-	 * @param users the users to add to the acl.
-	 * @param aclType the acl to which the users should be added.
+	 * @param users the users to add to the ACL.
+	 * @param aclType the ACL to which the users should be added.
+	 * @return the new ACL
 	 * @throws TokenExpiredException if the token is expired.
 	 * @throws ShockHttpException if a shock error occurs.
 	 * @throws IOException if an IO error occurs.
 	 */
-	public void addToNodeAcl(
+	public ShockACL addToNodeAcl(
 			final ShockNodeId id,
 			final List<String> users,
 			final ShockACLType aclType)
 			throws TokenExpiredException, ShockHttpException, IOException {
 		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
 		final HttpPut htp = new HttpPut(targeturl);
-		processRequest(htp, ShockACLResponse.class); //triggers throwing errors
+		return (ShockACL) processRequest(htp, ShockACLResponse.class);
 	}
 	
 	/** Remove users to a node's ACLs.
 	 * @param id the node to update.
-	 * @param users the users to remove from the acl.
-	 * @param aclType the acl to which the users should be removed.
+	 * @param users the users to remove from the ACL.
+	 * @param aclType the ACL to which the users should be removed.
+	 * @return the new ACL.
 	 * @throws TokenExpiredException if the token is expired.
 	 * @throws ShockHttpException if a shock error occurs.
 	 * @throws IOException if an IO error occurs.
 	 */
-	public void removeFromNodeAcl(
+	public ShockACL removeFromNodeAcl(
 			final ShockNodeId id,
 			final List<String> users,
 			final ShockACLType aclType)
 			throws TokenExpiredException, ShockHttpException, IOException {
 		final URI targeturl = checkACLArgsAndGenURI(id, users, aclType);
 		final HttpDelete htd = new HttpDelete(targeturl);
-		processRequest(htd, ShockACLResponse.class); //triggers throwing errors
+		return (ShockACL) processRequest(htd, ShockACLResponse.class);
 	}
 	
 	// look into sharing shock and awe client code
@@ -663,7 +672,7 @@ public class BasicShockClient {
 		}
 		final URI targeturl = nodeurl.resolve(id.getId() +
 				aclType.getUrlFragmentForAcl() + "?users=" +
-				StringUtils.join(users, ","));
+				StringUtils.join(users, ",") + ";verbosity=full");
 		return targeturl;
 	}
 	
@@ -700,9 +709,9 @@ public class BasicShockClient {
 	public ShockACL getACLs(final ShockNodeId id, final ShockACLType acl) 
 			throws IOException, ShockHttpException, TokenExpiredException {
 		final URI targeturl = nodeurl.resolve(id.getId() +
-				acl.getUrlFragmentForAcl());
+				acl.getUrlFragmentForAcl() + "?verbosity=full");
 		final HttpGet htg = new HttpGet(targeturl);
-		return (ShockACL)processRequest(htg, ShockACLResponse.class);
+		return (ShockACL) processRequest(htg, ShockACLResponse.class);
 	}
 	
 	//for known good uris ONLY
