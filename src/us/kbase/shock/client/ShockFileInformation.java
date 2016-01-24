@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author gaprice@lbl.gov
  *
  */
-@JsonIgnoreProperties({"virtual", "virtual_parts"})
+@JsonIgnoreProperties({"virtual", "virtual_parts", "created_on"})
 public class ShockFileInformation {
 	
 	private ShockFileInformation(){}
@@ -23,6 +23,7 @@ public class ShockFileInformation {
 	private String name;
 	private String format;
 	private long size;
+	
 	
 	//will be empty string if no file
 	/**

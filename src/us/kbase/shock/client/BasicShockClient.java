@@ -545,12 +545,13 @@ public class BasicShockClient {
 				mpeb.addBinaryBody("attributes", attribs,
 						ContentType.APPLICATION_JSON, ATTRIBFILE);
 			}
-			if (format != null) {
+			if (format != null && !format.isEmpty()) {
 				mpeb.addTextBody("format", format);
 			}
 			// causes an error for 0.8.23, makes node immutable
-			// doesn't work in 0.9.6
-			// TODO NOW 2 test in 0.9.12 and note results. Add when 0.8 drops support if it works.
+			// doesn't work in 0.9.6 but doesn't break anything
+			// works in 0.9.12
+			// TODO Add when 0.8 drops support.
 //			if (filename != null && !filename.isEmpty()) {
 //				mpeb.addTextBody("file_name", filename);
 //			}

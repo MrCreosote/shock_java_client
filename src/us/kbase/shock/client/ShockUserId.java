@@ -26,6 +26,7 @@ public class ShockUserId {
 	// for jackson
 	private ShockUserId() {}
 	// for Shock 0.8.23, Shock 0.9.6 sends full attrib hash
+	//TODO remove when dropping support for 0.8.23
 	private ShockUserId(final String id) {
 		uuid = id;
 	}

@@ -1,6 +1,5 @@
 package us.kbase.shock.client.test;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -469,7 +468,7 @@ public class ShockTests {
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
-		//TODO POST 0.9.6 restore when setting filename works for streamed files
+		//TODO restore when dropping support for 0.8.23, doesn't work on 0.9.6 but works on 0.9.12
 //		assertThat("filename correct", sn.getFileInformation().getName(),
 //				is(filename));
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
