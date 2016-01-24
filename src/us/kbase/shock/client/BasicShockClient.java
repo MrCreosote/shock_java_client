@@ -87,7 +87,6 @@ public class BasicShockClient {
 		if (client != null) {
 			return; //already done
 		}
-		//TODO coverage
 		if (allowSelfSignedCerts) {
 			//http://stackoverflow.com/questions/19517538/ignoring-ssl-certificate-in-apache-httpclient-4-3
 			final SSLConnectionSocketFactory sslsf;

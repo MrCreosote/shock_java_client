@@ -63,7 +63,6 @@ public class ShockTests {
 	
 	private static BasicShockClient BSC1;
 	private static BasicShockClient BSC2;
-	private static BasicShockClient BSC_TRUST_SSL;
 //	private static BasicShockClient bscNoAuth;
 	private static AuthUser USER2;
 	
@@ -130,7 +129,6 @@ public class ShockTests {
 		try {
 			BSC1 = new BasicShockClient(url, user1.getToken());
 			BSC2 = new BasicShockClient(url, USER2.getToken());
-			BSC_TRUST_SSL = new BasicShockClient(url, user1.getToken(), true);
 		} catch (IOException ioe) {
 			throw new TestException("Couldn't set up shock client: " +
 					ioe.getLocalizedMessage());
@@ -226,15 +224,6 @@ public class ShockTests {
 		addGetDeleteNodeBasic(BSC1);
 	}
 	
-	@Test
-	public void addGetDeleteNodeBasicTrustSSL() throws Exception {
-		//just makes sure the client basically works in naive mode
-		//not going to set up nginx with a SSC just to run one test
-		//although, dear reader, you are welcome to do so and it'd be much
-		//appreciated
-		addGetDeleteNodeBasic(BSC_TRUST_SSL);
-	}
-
 	private void addGetDeleteNodeBasic(BasicShockClient bsc)
 			throws IOException, ShockHttpException, TokenExpiredException,
 			Exception {

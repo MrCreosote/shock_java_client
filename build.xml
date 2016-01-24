@@ -104,6 +104,7 @@
       <sysproperty key="test.user2" value="${test.user2}"/>
       <sysproperty key="test.pwd2" value="${test.pwd2}"/>
       <test name="us.kbase.shock.client.test.ShockTests"/>
+      <test name="us.kbase.shock.client.test.ShockTrustSSLTest"/>
     </junit>
     <fail message="Test failure detected, check test results." if="test.failed" />
   </target>

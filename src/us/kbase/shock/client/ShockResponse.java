@@ -35,7 +35,9 @@ abstract class ShockResponse {
 			if (status == 401) {
 				throw new ShockAuthorizationException(getStatus(), getError());
 			} else if (status == 400) {
-				//TODO coverage
+				// this should never actually happen since getFile() checks
+				// that the node has a file before trying to get it. Leave it
+				// in just in case
 				if (getError().equals("Node has no file")) {
 					throw new ShockNoFileException(getStatus(), getError());
 				} else if (getError().equals("Node does not exist")) {
