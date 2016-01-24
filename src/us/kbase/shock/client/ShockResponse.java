@@ -35,6 +35,7 @@ abstract class ShockResponse {
 			if (status == 401) {
 				throw new ShockAuthorizationException(getStatus(), getError());
 			} else if (status == 400) {
+				//TODO coverage
 				if (getError().equals("Node has no file")) {
 					throw new ShockNoFileException(getStatus(), getError());
 				} else if (getError().equals("Node does not exist")) {
