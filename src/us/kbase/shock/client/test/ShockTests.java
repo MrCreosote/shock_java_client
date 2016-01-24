@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
 import com.gc.iotools.stream.os.OutputStreamToInputStream;
+import com.github.zafarkhaja.semver.Version;
 
 import us.kbase.auth.AuthException;
 import us.kbase.auth.AuthService;
@@ -72,7 +73,8 @@ public class ShockTests {
 	private static MongoController MONGO;
 	private static ShockController SHOCK;
 	
-	private static String VERSION;
+	private static Version VERSION;
+	private final static String SHOCK_V0_8 = ">=0.8 & < 0.9";
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -133,7 +135,7 @@ public class ShockTests {
 			throw new TestException("Couldn't set up shock client: " +
 					ioe.getLocalizedMessage());
 		}
-		VERSION = BSC1.getShockVersion();
+		VERSION = Version.valueOf(BSC1.getShockVersion());
 //		bscNoAuth = new BasicShockClient(url);
 		System.out.println("Set up shock clients");
 		USER1_SID = BSC1.addNode().getACLs().getOwner();
@@ -453,8 +455,9 @@ public class ShockTests {
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
-		//TODO restore when setting filename works for streamed files
-//		assertThat("filename correct", sn.getFileInformation().getName(), is(filename));
+		//TODO POST 0.9.6 restore when setting filename works for streamed files
+//		assertThat("filename correct", sn.getFileInformation().getName(),
+//				is(filename));
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
 		System.out.println("ID " + id + " Verifying " + filesize + "b file... ");
 
@@ -842,17 +845,22 @@ public class ShockTests {
 		failRemoveAcl(sn, Arrays.asList(USER2.getUserId()), ownerType,
 				new ShockIllegalUnshareException(400, "Deleting ownership is not a supported request type."));
 		
-		//TODO coverage
+		//TODO NOW 4 coverage
+		//TODO NOW 5 update readme with tested versions & short description, change to md
+		//TODO NOW 5 update release notes
+		//TODO NOW 4 test against shock 0.8.23, 0.9.6, 0.9.12
+		//TODO NOW 6 build docs on bare system, instructions
+		//TODO NOW 2 use verbose for ACLs always
 		
-		//TODO go through this stuff and understand if it stll makes sense
 		String owneracl = ownerType.getType() + " acl";
 		BSC1.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()), ownerType);
 		assertThat("added user to " + owneracl, BSC2.getACLs(sn.getId()).getOwner(),
 				is(USER2_SID));
-		//interesting, you can own a shock node but not be able to read it
-		//Jared says he's going to fix this
-		//TODO check above
-		BSC2.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()), new ShockACLType("read"));
+		if (VERSION.satisfies(SHOCK_V0_8)) {
+			//you can own a shock node but not be able to read it
+			BSC2.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()),
+					new ShockACLType("read"));
+		}
 		ShockNode sn2 = BSC2.getNode(sn.getId());
 		sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()), ownerType);
 		assertThat("added user to " + owneracl, sn.getACLs().getOwner(),
@@ -890,31 +898,32 @@ public class ShockTests {
 					is(Arrays.asList(USER1_SID)));
 		}
 		
-		String failAddErr = "Only the node owner can edit/view node ACL's";
+		String failAddErr =
+				"Users that are not node owners can only delete themselves from ACLs.";
 		//TODO this needs to be a lot smarter. But for now...
-		if (!"0.8.23".equals(VERSION)) {
-			// only 0.9.6 is tested other than 0.8.23
-			failAddErr = "Users that are not node owners can only delete themselves from ACLs.";
+		if (VERSION.satisfies(SHOCK_V0_8)) {
+			failAddErr = "Only the node owner can edit/view node ACL's";
 		}
 		
 		failAddAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()), allType,
 				new ShockIllegalShareException(400, failAddErr));
 		failAddAcl(sn2, Arrays.asList(USER2.getUserId()), allType,
 				new ShockIllegalShareException(400, failAddErr));
-		if ("0.8.23".equals(BSC1.getShockVersion())) {
+		if (VERSION.satisfies(SHOCK_V0_8)) {
 			failRemoveAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()), allType,
 					new ShockIllegalShareException(400, failAddErr));
 			failRemoveAcl(sn2, Arrays.asList(USER2.getUserId()), allType,
 					new ShockIllegalShareException(400, failAddErr));
 		}
-		//TODO test removing self from acl for 0.9.6
+		//TODO NOW 3 test removing self from acl for 0.9.6
 		
 		ShockNodeId id = sn.getId();
 		sn.delete();
-		ShockHttpException ex = new ShockHttpException(500,
-				"Err@node_Read:LoadNode: not found");
-		if (!"0.8.23".equals(VERSION)) {
-			ex = new ShockNoNodeException(404, "Node not found");
+		ShockHttpException ex = new ShockNoNodeException(
+				404, "Node not found");
+		if (VERSION.satisfies(SHOCK_V0_8)) {
+			ex = new ShockHttpException(
+					500, "Err@node_Read:LoadNode: not found");
 		}
 		failAddAcl(BSC1, id, Arrays.asList(USER2.getUserId()), allType, ex);
 		

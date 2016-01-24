@@ -59,7 +59,6 @@ import us.kbase.shock.client.exceptions.ShockNoFileException;
  */
 public class BasicShockClient {
 	
-	// might want semver here?
 	private final String version;
 	private final URI baseurl;
 	private final URI nodeurl;
@@ -135,8 +134,8 @@ public class BasicShockClient {
 	 * Create a new shock client.
 	 * @param url the location of the shock server.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws InvalidShockUrlException if the <code>url</code> does not reference
-	 * a shock server.
+	 * @throws InvalidShockUrlException if the <code>url</code> does not
+	 * reference a shock server.
 	 */
 	public BasicShockClient(final URL url)
 			throws IOException, InvalidShockUrlException {
@@ -148,8 +147,8 @@ public class BasicShockClient {
 	 * @param url the location of the shock server.
 	 * @param token the authorization token to present to shock.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws InvalidShockUrlException if the <code>url</code> does not reference
-	 * a shock server.
+	 * @throws InvalidShockUrlException if the <code>url</code> does not
+	 * reference a shock server.
 	 * @throws TokenExpiredException if the <code>token</code> is expired.
 	 * @throws ShockHttpException if the connection to shock fails.
 	 */
@@ -159,7 +158,15 @@ public class BasicShockClient {
 		this(url, token, false);
 	}
 	
-	//TODO docs
+	/**
+	 * Create a new shock client.
+	 * @param url the location of the shock server.
+	 * @param allowSelfSignedCerts <code>true</code> to permit self signed
+	 * certificates when contacting servers.
+	 * @throws IOException if an IO problem occurs.
+	 * @throws InvalidShockUrlException if the <code>url</code> does not
+	 * reference a shock server.
+	 */
 	public BasicShockClient(final URL url, boolean allowSelfSignedCerts)
 			throws InvalidShockUrlException, IOException {
 		
@@ -206,7 +213,18 @@ public class BasicShockClient {
 		nodeurl = baseurl.resolve("node/");
 	}
 	
-	//TODO docs
+	/**
+	 * Create a new shock client authorized to act as a shock user.
+	 * @param url the location of the shock server.
+	 * @param token the authorization token to present to shock.
+	 * @param allowSelfSignedCerts <code>true</code> to permit self signed
+	 * certificates when contacting servers.
+	 * @throws IOException if an IO problem occurs.
+	 * @throws InvalidShockUrlException if the <code>url</code> does not
+	 * reference a shock server.
+	 * @throws TokenExpiredException if the <code>token</code> is expired.
+	 * @throws ShockHttpException if the connection to shock fails.
+	 */
 	public BasicShockClient(
 			final URL url,
 			final AuthToken token,
