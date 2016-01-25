@@ -939,10 +939,8 @@ public class ShockTests {
 				new ShockIllegalUnshareException(400,
 						"Deleting ownership is not a supported request type."));
 		
-		//TODO NOW 4 coverage
 		//TODO NOW 5 update readme with tested versions & short description, change to md
 		//TODO NOW 5 update release notes
-		//TODO NOW 3 test against shock 0.8.23, 0.9.6, 0.9.12
 		//TODO NOW 6 build docs on bare system, instructions
 		
 		String owneracl = ShockACLType.OWNER.getType() + " acl";
