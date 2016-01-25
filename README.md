@@ -91,7 +91,7 @@ assume that the KBase runtime or `dev_container` are installed.
 
 The build requires:
 
-Java JDK 6+ ([install instructions](https://www.digitalocean.com/community/tutorials/how-to-install-java-on-ubuntu-with-apt-get))
+Java JDK 7+ ([install instructions](https://www.digitalocean.com/community/tutorials/how-to-install-java-on-ubuntu-with-apt-get))
 
 [Java ant](http://ant.apache.org):
 
@@ -99,27 +99,91 @@ Java JDK 6+ ([install instructions](https://www.digitalocean.com/community/tutor
   
 Clone the jars and shock_java_client repos:
 
-    bareubuntu@bu:~/ws$ git clone https://github.com/kbase/jars
-    Cloning into 'jars'...
-    remote: Counting objects: 1466, done.
-    remote: Total 1466 (delta 0), reused 0 (delta 0), pack-reused 1466
-    Receiving objects: 100% (1466/1466), 59.43 MiB | 2.43 MiB/s, done.
-    Resolving deltas: 100% (626/626), done.
+	bareubuntu@bu:~/shockclient$ git clone https://github.com/kbase/jars
+	Cloning into 'jars'...
+	remote: Counting objects: 1499, done.
+	remote: Total 1499 (delta 0), reused 0 (delta 0), pack-reused 1499
+	Receiving objects: 100% (1499/1499), 60.22 MiB | 2.22 MiB/s, done.
+	Resolving deltas: 100% (645/645), done.
 
-    bareubuntu@bu:~/ws$ git clone https://github.com/kbase/workspace_deluxe
-    Cloning into 'workspace_deluxe'...
-    remote: Counting objects: 22004, done.
-    remote: Compressing objects: 100% (82/82), done.
-    remote: Total 22004 (delta 41), reused 0 (delta 0), pack-reused 21921
-    Receiving objects: 100% (22004/22004), 21.44 MiB | 2.44 MiB/s, done.
-    Resolving deltas: 100% (14000/14000), done.
-    
+	bareubuntu@bu:~/shockclient$ git clone https://github.com/kbase/shock_java_client
+	Cloning into 'shock_java_client'...
+	remote: Counting objects: 572, done.
+	remote: Total 572 (delta 0), reused 0 (delta 0), pack-reused 572
+	Receiving objects: 100% (572/572), 97.59 KiB, done.
+	Resolving deltas: 100% (254/254), done.
+
 Build:
 
-    bareubuntu@bu:~/ws$ cd workspace_deluxe/
-    bareubuntu@bu:~/ws/workspace_deluxe$ make build-docs
-    
-do ls here
+	bareubuntu@bu:~/shockclient$ cd shock_java_client/
+
+	bareubuntu@bu:~/shockclient/shock_java_client$ make
+	ant compile -Dcompile.jarfile=shock-client-0.0.15
+	Buildfile: /home/bareubuntu/shockclient/shock_java_client/build.xml
+	
+	init:
+	    [mkdir] Created dir: /home/bareubuntu/shockclient/shock_java_client/classes
+	    [mkdir] Created dir: /home/bareubuntu/shockclient/shock_java_client/docs
+	
+	compile:
+	    [javac] Compiling 25 source files to /home/bareubuntu/shockclient/shock_java_client/classes
+	    [javac] warning: [options] bootstrap class path not set in conjunction with -source 1.6
+	    [javac] 1 warning
+	      [jar] Building jar: /home/bareubuntu/shockclient/shock_java_client/shock-client-0.0.15.jar
+	      [jar] Building jar: /home/bareubuntu/shockclient/shock_java_client/shock-client-0.0.15-sources.jar
+	
+	BUILD SUCCESSFUL
+	Total time: 2 seconds
+	rm -r docs 
+	ant javadoc
+	Buildfile: /home/bareubuntu/shockclient/shock_java_client/build.xml
+	
+	init:
+	    [mkdir] Created dir: /home/bareubuntu/shockclient/shock_java_client/docs
+	
+	javadoc:
+	  [javadoc] Generating Javadoc
+	  [javadoc] Javadoc execution
+	  [javadoc] Creating destination directory: "/home/bareubuntu/shockclient/shock_java_client/docs/javadoc/"
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/BasicShockClient.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockACL.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockACLResponse.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockACLType.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockData.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockFileInformation.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockNode.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockNodeId.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockNodeResponse.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockResponse.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockUserId.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/ShockVersionStamp.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/InvalidShockUrlException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockAuthorizationException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockHttpException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockIllegalShareException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockIllegalUnshareException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockNoFileException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockNoNodeException.java...
+	  [javadoc] Loading source file /home/bareubuntu/shockclient/shock_java_client/src/us/kbase/shock/client/exceptions/ShockNodeDeletedException.java...
+	  [javadoc] Constructing Javadoc information...
+	  [javadoc] Standard Doclet version 1.7.0_91
+	  [javadoc] Building tree for all the packages and classes...
+	  [javadoc] Building index for all the packages and classes...
+	  [javadoc] Building index for all classes...
+	
+	BUILD SUCCESSFUL
+	Total time: 4 seconds
+	
+	bareubuntu@bu:~/shockclient/shock_java_client$ ls
+	build.xml     docs        RELEASE_NOTES.md
+	classes       internal    shock-client-0.0.15.jar
+	COMMANDS      LICENSE.md  shock-client-0.0.15-sources.jar
+	DEPENDENCIES  Makefile    src
+	deploy.cfg    README.md   test
+	
+	bareubuntu@bu:~/shockclient/shock_java_client$ ls docs/
+	javadoc
 
 Known issues
 ------------
