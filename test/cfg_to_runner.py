@@ -13,6 +13,7 @@ ANT = 'ant'
 CFG_SECTION = 'ShockClientTest'
 
 CONFIG_OPTS = ['test.shock.exe',
+               'test.shock.version',
                'test.mongo.exe',
                'test.temp.dir',
                'test.temp.dir.keep',

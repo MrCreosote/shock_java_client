@@ -86,6 +86,7 @@ public class ShockTests {
 		
 		SHOCK = new ShockController(
 				ShockTestCommon.getShockExe(),
+				ShockTestCommon.getShockVersion(),
 				Paths.get(ShockTestCommon.getTempDir()),
 				"***---fakeuser---***",
 				"localhost:" + MONGO.getServerPort(),
@@ -154,7 +155,10 @@ public class ShockTests {
 	@Test
 	public void setExpiredToken() throws Exception {
 		AuthToken exptok = new AuthToken(USER2.getTokenString(), 0);
-		Thread.sleep(5000); //account for a little clockskew
+		//account for clockskew
+		long issued = exptok.getIssueDate().getTime();
+		long sleep = Math.max(issued - new Date().getTime(), 1000);
+		Thread.sleep(sleep);
 		try {
 			BSC2.updateToken(exptok);
 			fail("accepted expired token on update");
@@ -164,8 +168,9 @@ public class ShockTests {
 	@Test
 	public void setOldToken() throws Exception {
 		AuthToken orig = USER2.getToken();
-		AuthToken exptok = new AuthToken(orig.toString(),
-				(new Date().getTime() - orig.getIssueDate().getTime())/1000 + 1);
+		AuthToken exptok = new AuthToken(orig.toString(), Math.max(
+				(new Date().getTime() - orig.getIssueDate().getTime())/1000, 0)
+				+ 1);
 		BSC2.updateToken(exptok);
 		Thread.sleep(2000);
 		assertTrue("token is expired", BSC2.isTokenExpired());

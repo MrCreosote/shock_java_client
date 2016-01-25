@@ -51,6 +51,7 @@ public class ShockTrustSSLTest {
 		
 		SHOCK = new ShockController(
 				ShockTestCommon.getShockExe(),
+				ShockTestCommon.getShockVersion(),
 				Paths.get(ShockTestCommon.getTempDir()),
 				"***---fakeuser---***",
 				"localhost:" + MONGO.getServerPort(),
