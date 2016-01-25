@@ -9,17 +9,7 @@ public class ShockNoNodeException extends ShockHttpException {
 
 	private static final long serialVersionUID = 1L;
 	
-	public ShockNoNodeException(int code) {
-		super(code);
-	}
 	public ShockNoNodeException(int code, String message) {
 		super(code, message);
-	}
-	public ShockNoNodeException(int code, String message,
-			Throwable cause) {
-		super(code, message, cause);
-	}
-	public ShockNoNodeException(int code, Throwable cause) {
-		super(code, cause);
 	}
 }

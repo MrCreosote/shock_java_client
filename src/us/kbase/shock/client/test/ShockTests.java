@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -177,6 +178,21 @@ public class ShockTests {
 		assertFalse("token is now valid", BSC2.isTokenExpired());
 	}
 	
+	@Test
+	public void setNullToken() throws Exception {
+		AuthToken current = BSC1.getToken();
+		BSC1.updateToken(null);
+		try {
+			BSC1.addNode();
+		} catch (ShockAuthorizationException sae) {
+			assertThat("correct exception message", sae.getLocalizedMessage(),
+					is("No Authorization"));
+			assertThat("correct code", sae.getHttpCode(), is(401));
+		}
+		assertThat("token is null", BSC1.getToken(), is((AuthToken) null));
+		BSC1.updateToken(current);
+	}
+	
 
 	@Test
 	public void shockUrl() throws Exception {
@@ -242,6 +258,13 @@ public class ShockTests {
 		} catch (ShockNoNodeException snne) {
 			assertThat("Bad exception message", snne.getLocalizedMessage(),
 					is("Node not found"));
+		}
+		try {
+			BSC1.getNode(null);
+			fail("got node with bad id");
+		} catch (NullPointerException npe) {
+			assertThat("Bad exception message", npe.getLocalizedMessage(),
+					is("id may not be null"));
 		}
 	}
 	
@@ -586,10 +609,15 @@ public class ShockTests {
 		ShockNode snget = BSC1.getNode(sn.getId());
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		BSC1.getFile(sn, bos);
-		String filecon = bos.toString(StandardCharsets.UTF_8.name());
-		ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
-		snget.getFile(bos2);
-		String filefromnode = bos2.toString(StandardCharsets.UTF_8.name());
+		String filecon1 = bos.toString(StandardCharsets.UTF_8.name());
+		
+		bos = new ByteArrayOutputStream();
+		BSC1.getFile(sn.getId(), bos);
+		String filecon2 = bos.toString(StandardCharsets.UTF_8.name());
+		
+		bos = new ByteArrayOutputStream();
+		snget.getFile(bos);
+		String filefromnode = bos.toString(StandardCharsets.UTF_8.name());
 		Set<String> digestTypes = snget.getFileInformation().getChecksumTypes();
 		assertTrue("has md5", digestTypes.contains("md5"));
 		assertThat("unequal md5", snget.getFileInformation().getChecksum("md5"),
@@ -602,11 +630,17 @@ public class ShockTests {
 					"java.lang.IllegalArgumentException: No such checksum type: this is not a checksum type",
 					is(iae.toString()));
 		}
-		assertThat("file from node != file from client", filefromnode, is(filecon));
-		assertThat("file content unequal", filecon, is(content));
-		assertThat("file name unequal", snget.getFileInformation().getName(), is(name));
-		assertThat("file format unequal", snget.getFileInformation().getFormat(), is(format));
-		assertThat("file size wrong", snget.getFileInformation().getSize(), is((long) content.length()));
+		assertThat("file from node != file from client", filefromnode,
+				is(filecon1));
+		assertThat("files from the 2 polymorphic getFile() methods different",
+				filecon1, is(filecon2));
+		assertThat("file content unequal", filecon1, is(content));
+		assertThat("file name unequal", snget.getFileInformation().getName(),
+				is(name));
+		assertThat("file format unequal", snget.getFileInformation().getFormat(),
+				is(format));
+		assertThat("file size wrong", snget.getFileInformation().getSize(),
+				is((long) content.length()));
 	}
 	
 	@Test
@@ -638,11 +672,25 @@ public class ShockTests {
 					is("Neither the shock node nor the file may be null"));
 		}
 		try {
+			BSC1.getFile((ShockNode) null, new ByteArrayOutputStream());
+			fail("called get file w/ null arg");
+		} catch (IllegalArgumentException iae) {
+			assertThat("no file exc string incorrect", iae.getLocalizedMessage(), 
+					is("Neither the shock node nor the file may be null"));
+		}
+		try {
 			BSC1.getFile(sn, new ByteArrayOutputStream());
 			fail("Got file from node w/o file");
 		} catch (ShockNoFileException snfe) {
 			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
 					is("Node has no file"));
+		}
+		try {
+			BSC1.getFile((ShockNodeId) null, new ByteArrayOutputStream());
+			fail("called get file w/ null arg");
+		} catch (NullPointerException npe) {
+			assertThat("no file exc string incorrect", npe.getLocalizedMessage(), 
+					is("id may not be null"));
 		}
 		try {
 			BSC1.getFile(sn.getId(), new ByteArrayOutputStream());
@@ -658,12 +706,21 @@ public class ShockTests {
 			assertThat("no file exc string incorrect", ioe.getLocalizedMessage(), 
 					is("Neither the shock node nor the file may be null"));
 		}
-		//can't test with sn == null since method call is ambiguous
 		sn.delete();
+		
+		sn = addNode(BSC1, "Been shopping? No, I've been shopping", "filename",
+				null);
+		BSC1.deleteNode(sn.getId());
+		try {
+			BSC1.getFile(sn, new ByteArrayOutputStream());
+		} catch (ShockNoNodeException snne) {
+			assertThat("correct exception message", snne.getLocalizedMessage(),
+					is("Node not found"));
+		}
 	}
 	
 	@Test
-	public void getNodeNulls() throws Exception {
+	public void addNodeNulls() throws Exception {
 		Map<String, Object> attribs = makeSomeAttribs("wuggawugga");
 		try {
 			BSC1.addNode(null);
@@ -781,25 +838,59 @@ public class ShockTests {
 		for (ShockACLType aclType: singleAcls) {
 			failAddAcl(BSC1, null, Arrays.asList(USER2.getUserId()), aclType,
 					new NullPointerException("id cannot be null"));
+			
 			failAddAcl(BSC1, sn.getId(), Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failAddAcl(sn, Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
+			
 			failAddAcl(BSC1, sn.getId(), Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failAddAcl(sn, Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			
+			failAddAcl(BSC1, sn.getId(), null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failAddAcl(sn, null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failAddAcl(BSC1, sn.getId(), new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failAddAcl(sn, new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failAddAcl(BSC1, sn.getId(), Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
+			failAddAcl(sn, Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
+			
 			failRemoveAcl(BSC1, null, Arrays.asList(USER2.getUserId()), aclType,
 					new NullPointerException("id cannot be null"));
+			
 			failRemoveAcl(BSC1, sn.getId(), Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failRemoveAcl(sn, Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
+			
 			failRemoveAcl(BSC1, sn.getId(), Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failRemoveAcl(sn, Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
+			
+			failRemoveAcl(BSC1, sn.getId(), null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failRemoveAcl(sn, null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failRemoveAcl(BSC1, sn.getId(), new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failRemoveAcl(sn, new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failRemoveAcl(BSC1, sn.getId(), Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
+			failRemoveAcl(sn, Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
 
 			String acl = aclType.getType() + " acl";
 			
@@ -1084,6 +1175,7 @@ public class ShockTests {
 		} catch (ShockAuthorizationException aue) {
 			assertThat("auth exception string is correct", aue.getLocalizedMessage(),
 					is("User Unauthorized"));
+			assertThat("correct code", aue.getHttpCode(), is(401));
 		}
 		return sn;
 	}

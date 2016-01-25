@@ -246,7 +246,6 @@ public class BasicShockClient {
 	 */
 	public void updateToken(final AuthToken token)
 			throws TokenExpiredException {
-		//TODO coverage
 		if (token == null) {
 			this.token = null;
 			return;
@@ -344,7 +343,7 @@ public class BasicShockClient {
 	public ShockNode getNode(final ShockNodeId id) throws IOException,
 			ShockHttpException, TokenExpiredException {
 		if (id == null) {
-			throw new IllegalArgumentException("id may not be null");
+			throw new NullPointerException("id may not be null");
 		}
 		final URI targeturl = nodeurl.resolve(id.getId());
 		final HttpGet htg = new HttpGet(targeturl);
@@ -354,7 +353,6 @@ public class BasicShockClient {
 		return sn;
 	}
 	
-	//TODO coverage
 	/**
 	 * Equivalent to client.getFile(client.getNode(id), file)
 	 * @param id the ID of the shock node.
@@ -660,12 +658,10 @@ public class BasicShockClient {
 		if (id == null) {
 			throw new NullPointerException("id cannot be null");
 		}
-		//TODO coverage
 		if (users == null || users.isEmpty()) {
 			throw new IllegalArgumentException(
 					"user list cannot be null or empty");
 		}
-		//TODO coverage
 		if (aclType == null) {
 			throw new NullPointerException("aclType cannot be null");
 		}
