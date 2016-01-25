@@ -11,15 +11,6 @@ public class ShockHttpException extends ShockException {
 	private final int code;
 	
 	/** 
-	 * Construct the exception with a http error code.
-	 * @param code the http error code that shock passed back to the client.
-	 */
-	public ShockHttpException(int code) { 
-		super();
-		this.code = code;
-	}
-	
-	/** 
 	 * Construct the exception with a http error code and message.
 	 * @param code the http error code that shock passed back to the client.
 	 * @param message the error message reported by shock.
@@ -39,17 +30,6 @@ public class ShockHttpException extends ShockException {
 	public ShockHttpException(int code, String message,
 			Throwable cause) { 
 		super(message, cause);
-		this.code = code;
-	}
-	
-	/**
-	 * Construct the exception with a http error code and root
-	 * cause exception.
-	 * @param code the http error code that shock passed back to the client.
-	 * @param cause the exception that caused this exception. Rarely used.
-	 */
-	public ShockHttpException(int code, Throwable cause) {
-		super(cause);
 		this.code = code;
 	}
 	

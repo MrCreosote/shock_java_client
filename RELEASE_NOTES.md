@@ -1,10 +1,14 @@
-shock_java_client repo
-
-OVERVIEW
+VERSION: 0.0.9 (Released 1/24/2015)
 -----------------------------------------
-A basic java client for the Shock service. Supports node creation, deletion and
-retrieval of a subset of node data, streaming file up/download, viewing
-ACLs, and limited ACL modification.
+
+NEW FEATURES:
+- Compatible with Shock 0.8.23, 0.9.6, and 0.9.12. Probably compatible with
+  other versions but they have not been tested.
+- Get the version of the Shock server.
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- ACLs now include the user name as well as the user ID if Shock supports it.
+- Methods that modify ACLs now return the new ACLs.
 
 VERSION: 0.0.8 (Released 10/23/2014)
 -----------------------------------------
@@ -18,10 +22,6 @@ UPDATED FEATURES / MAJOR BUG FIXES:
 - The URL provided by the Shock server no longer replaces the user provided
   URL on startup.
 
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Copy a node.
-- ACLs via KBase groups when Shock supports it.
-
 VERSION: 0.0.7 (Released 8/14/2014)
 -----------------------------------------
 
@@ -33,10 +33,6 @@ NEW FEATURES:
 UPDATED FEATURES / MAJOR BUG FIXES:
 - Improved error handling when the client does not receive JSON data 
   (for a 502, for example).
-
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Copy a node when Shock supports it.
-- ACLs via KBase groups when Shock supports it.
 
 VERSION: 0.0.6 (Released 1/24/2014)
 -----------------------------------------
@@ -51,10 +47,6 @@ UPDATED FEATURES / MAJOR BUG FIXES:
   correctly. Currently if shock cannot auth to mongo it throws
   400 Invalid authorization header or content.
 
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Copy a node when Shock supports it.
-- ACLs via KBase groups when Shock supports it.
-
 VERSION: 0.0.5 (Released 12/6/2013)
 -----------------------------------------
 
@@ -66,10 +58,6 @@ NEW FEATURES:
 UPDATED FEATURES / MAJOR BUG FIXES:
 - Cut memory requirements in half based on performance testing of different
 	download/upload chunk sizes.
-
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Copy a node when Shock supports it.
-- ACLs via KBase groups when Shock supports it.
 
 VERSION: 0.0.4 (Released 12/3/2013)
 -----------------------------------------
@@ -85,11 +73,6 @@ UPDATED FEATURES / MAJOR BUG FIXES:
 - removed setNodeWorldReadable() in anticipation of the upcoming Shock ACL
 	changes
 
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Copy a node when Shock supports it.
-- ACLs via KBase groups when Shock supports it.
-
-
 VERSION: 0.0.3 (Released 11/24/2013)
 -----------------------------------------
 
@@ -100,11 +83,6 @@ NEW FEATURES:
 
 UPDATED FEATURES / MAJOR BUG FIXES:
 - None
-
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Copy a node when Shock supports it.
-- ACLs via KBase groups when Shock supports it.
-
 
 VERSION: 0.0.2 (Released 11/12/2013)
 -----------------------------------------
@@ -120,11 +98,6 @@ UPDATED FEATURES / MAJOR BUG FIXES:
 - Fixed a rounding bug such that retrieved files where the size % 100,000,000
 	is > 0 but close to 1 are truncated.
 
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Copy a node when Shock supports it.
-- ACLs via KBase groups when Shock supports it.
-
-
 VERSION: 0.0.1 (Released 11/11/2013)
 -----------------------------------------
 
@@ -135,13 +108,3 @@ NEW FEATURES:
 
 UPDATED FEATURES / MAJOR BUG FIXES:
 - N/A
-
-ANTICIPATED FUTURE DEVELOPMENTS:
-- Remove need to specify the file size when uploading a file.
-- Use KBase user name rather than email for ACLs.
-- Copy a node when Shock supports it.
-- ACLs via KBase groups when Shock supports it.
-
-ISSUES:
-Since the addNode(file) methods are going to be rewritten in the next release,
-test coverage is not complete.

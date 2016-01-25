@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +34,7 @@ import org.junit.Test;
 
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
 import com.gc.iotools.stream.os.OutputStreamToInputStream;
+import com.github.zafarkhaja.semver.Version;
 
 import us.kbase.auth.AuthException;
 import us.kbase.auth.AuthService;
@@ -62,15 +64,17 @@ public class ShockTests {
 	
 	private static BasicShockClient BSC1;
 	private static BasicShockClient BSC2;
-	private static BasicShockClient BSC_TRUST_SSL;
 //	private static BasicShockClient bscNoAuth;
-	private static AuthUser OTHER_GUY;
+	private static AuthUser USER2;
 	
 	private static ShockUserId USER1_SID;
 	private static ShockUserId USER2_SID;
 	
 	private static MongoController MONGO;
 	private static ShockController SHOCK;
+	
+	private static Version VERSION;
+	private final static String SHOCK_V0_8 = ">=0.8 & < 0.9";
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -82,12 +86,18 @@ public class ShockTests {
 		
 		SHOCK = new ShockController(
 				ShockTestCommon.getShockExe(),
+				ShockTestCommon.getShockVersion(),
 				Paths.get(ShockTestCommon.getTempDir()),
 				"***---fakeuser---***",
 				"localhost:" + MONGO.getServerPort(),
 				"ShockTests_ShockDB",
 				"foo",
 				"foo");
+		System.out.println("Shock controller version: " + SHOCK.getVersion());
+		if (SHOCK.getVersion() == null) {
+			System.out.println(
+					"Unregistered version - Shock may not start correctly");
+		}
 		System.out.println("Using Shock temp dir " + SHOCK.getTempDir());
 		
 		
@@ -108,24 +118,24 @@ public class ShockTests {
 		}
 		System.out.println("Logged in user1");
 		try {
-			OTHER_GUY = AuthService.login(u2, p2);
+			USER2 = AuthService.login(u2, p2);
 		} catch (AuthException ae) {
 			throw new TestException("Unable to login with test.user2: " + u2 +
 					"\nPlease check the credentials in the test configuration.", ae);
 		}
 		System.out.println("Logged in user2");
-		if (user1.getUserId().equals(OTHER_GUY.getUserId())) {
+		if (user1.getUserId().equals(USER2.getUserId())) {
 			throw new TestException("The user IDs of test.user1 and " + 
 					"test.user2 are the same. Please provide test users with different email addresses.");
 		}
 		try {
 			BSC1 = new BasicShockClient(url, user1.getToken());
-			BSC2 = new BasicShockClient(url, OTHER_GUY.getToken());
-			BSC_TRUST_SSL = new BasicShockClient(url, user1.getToken(), true);
+			BSC2 = new BasicShockClient(url, USER2.getToken());
 		} catch (IOException ioe) {
 			throw new TestException("Couldn't set up shock client: " +
 					ioe.getLocalizedMessage());
 		}
+		VERSION = Version.valueOf(BSC1.getShockVersion());
 //		bscNoAuth = new BasicShockClient(url);
 		System.out.println("Set up shock clients");
 		USER1_SID = BSC1.addNode().getACLs().getOwner();
@@ -144,8 +154,11 @@ public class ShockTests {
 	
 	@Test
 	public void setExpiredToken() throws Exception {
-		AuthToken exptok = new AuthToken(OTHER_GUY.getTokenString(), 0);
-		Thread.sleep(5000); //account for a little clockskew
+		AuthToken exptok = new AuthToken(USER2.getTokenString(), 0);
+		//account for clockskew
+		long issued = exptok.getIssueDate().getTime();
+		long sleep = Math.max(issued - new Date().getTime(), 1000);
+		Thread.sleep(sleep);
 		try {
 			BSC2.updateToken(exptok);
 			fail("accepted expired token on update");
@@ -154,9 +167,10 @@ public class ShockTests {
 	
 	@Test
 	public void setOldToken() throws Exception {
-		AuthToken orig = OTHER_GUY.getToken();
-		AuthToken exptok = new AuthToken(orig.toString(),
-				(new Date().getTime() - orig.getIssueDate().getTime())/1000 + 1);
+		AuthToken orig = USER2.getToken();
+		AuthToken exptok = new AuthToken(orig.toString(), Math.max(
+				(new Date().getTime() - orig.getIssueDate().getTime())/1000, 0)
+				+ 1);
 		BSC2.updateToken(exptok);
 		Thread.sleep(2000);
 		assertTrue("token is expired", BSC2.isTokenExpired());
@@ -167,6 +181,21 @@ public class ShockTests {
 		
 		BSC2.updateToken(orig); //restore to std state
 		assertFalse("token is now valid", BSC2.isTokenExpired());
+	}
+	
+	@Test
+	public void setNullToken() throws Exception {
+		AuthToken current = BSC1.getToken();
+		BSC1.updateToken(null);
+		try {
+			BSC1.addNode();
+		} catch (ShockAuthorizationException sae) {
+			assertThat("correct exception message", sae.getLocalizedMessage(),
+					is("No Authorization"));
+			assertThat("correct code", sae.getHttpCode(), is(401));
+		}
+		assertThat("token is null", BSC1.getToken(), is((AuthToken) null));
+		BSC1.updateToken(current);
 	}
 	
 
@@ -198,20 +227,24 @@ public class ShockTests {
 		
 	}
 
+	/*
+	@Test
+	public void trystuffout() throws Exception {
+		
+		String exampleString = "foo";
+		
+		InputStream stream = new ByteArrayInputStream(
+				exampleString.getBytes(StandardCharsets.UTF_8));
+		ShockNode foo = BSC1.addNode(stream, "myfile", "foo");
+		System.out.println(foo);
+	}
+	*/
+	
 	@Test
 	public void addGetDeleteNodeBasic() throws Exception {
 		addGetDeleteNodeBasic(BSC1);
 	}
 	
-	@Test
-	public void addGetDeleteNodeBasicTrustSSL() throws Exception {
-		//just makes sure the client basically works in naive mode
-		//not going to set up nginx with a SSC just to run one test
-		//although, dear reader, you are welcome to do so and it'd be much
-		//appreciated
-		addGetDeleteNodeBasic(BSC_TRUST_SSL);
-	}
-
 	private void addGetDeleteNodeBasic(BasicShockClient bsc)
 			throws IOException, ShockHttpException, TokenExpiredException,
 			Exception {
@@ -229,7 +262,14 @@ public class ShockTests {
 			fail("got node with bad id");
 		} catch (ShockNoNodeException snne) {
 			assertThat("Bad exception message", snne.getLocalizedMessage(),
-					is("Node does not exist"));
+					is("Node not found"));
+		}
+		try {
+			BSC1.getNode(null);
+			fail("got node with bad id");
+		} catch (NullPointerException npe) {
+			assertThat("Bad exception message", npe.getLocalizedMessage(),
+					is("id may not be null"));
 		}
 	}
 	
@@ -239,7 +279,7 @@ public class ShockTests {
 			fail("Able to retrieve deleted node");
 		} catch (ShockNoNodeException snne) {
 			assertThat("Bad exception message", snne.getLocalizedMessage(),
-					is("Node does not exist"));
+					is("Node not found"));
 		}
 	}
 	
@@ -445,8 +485,9 @@ public class ShockTests {
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
-		//TODO restore when setting filename works for streamed files
-//		assertThat("filename correct", sn.getFileInformation().getName(), is(filename));
+		//TODO restore when dropping support for 0.8.23, doesn't work on 0.9.6 but works on 0.9.12
+//		assertThat("filename correct", sn.getFileInformation().getName(),
+//				is(filename));
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
 		System.out.println("ID " + id + " Verifying " + filesize + "b file... ");
 
@@ -573,10 +614,15 @@ public class ShockTests {
 		ShockNode snget = BSC1.getNode(sn.getId());
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		BSC1.getFile(sn, bos);
-		String filecon = bos.toString(StandardCharsets.UTF_8.name());
-		ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
-		snget.getFile(bos2);
-		String filefromnode = bos2.toString(StandardCharsets.UTF_8.name());
+		String filecon1 = bos.toString(StandardCharsets.UTF_8.name());
+		
+		bos = new ByteArrayOutputStream();
+		BSC1.getFile(sn.getId(), bos);
+		String filecon2 = bos.toString(StandardCharsets.UTF_8.name());
+		
+		bos = new ByteArrayOutputStream();
+		snget.getFile(bos);
+		String filefromnode = bos.toString(StandardCharsets.UTF_8.name());
 		Set<String> digestTypes = snget.getFileInformation().getChecksumTypes();
 		assertTrue("has md5", digestTypes.contains("md5"));
 		assertThat("unequal md5", snget.getFileInformation().getChecksum("md5"),
@@ -589,11 +635,17 @@ public class ShockTests {
 					"java.lang.IllegalArgumentException: No such checksum type: this is not a checksum type",
 					is(iae.toString()));
 		}
-		assertThat("file from node != file from client", filefromnode, is(filecon));
-		assertThat("file content unequal", filecon, is(content));
-		assertThat("file name unequal", snget.getFileInformation().getName(), is(name));
-		assertThat("file format unequal", snget.getFileInformation().getFormat(), is(format));
-		assertThat("file size wrong", snget.getFileInformation().getSize(), is((long) content.length()));
+		assertThat("file from node != file from client", filefromnode,
+				is(filecon1));
+		assertThat("files from the 2 polymorphic getFile() methods different",
+				filecon1, is(filecon2));
+		assertThat("file content unequal", filecon1, is(content));
+		assertThat("file name unequal", snget.getFileInformation().getName(),
+				is(name));
+		assertThat("file format unequal", snget.getFileInformation().getFormat(),
+				is(format));
+		assertThat("file size wrong", snget.getFileInformation().getSize(),
+				is((long) content.length()));
 	}
 	
 	@Test
@@ -625,11 +677,25 @@ public class ShockTests {
 					is("Neither the shock node nor the file may be null"));
 		}
 		try {
+			BSC1.getFile((ShockNode) null, new ByteArrayOutputStream());
+			fail("called get file w/ null arg");
+		} catch (IllegalArgumentException iae) {
+			assertThat("no file exc string incorrect", iae.getLocalizedMessage(), 
+					is("Neither the shock node nor the file may be null"));
+		}
+		try {
 			BSC1.getFile(sn, new ByteArrayOutputStream());
 			fail("Got file from node w/o file");
 		} catch (ShockNoFileException snfe) {
 			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
 					is("Node has no file"));
+		}
+		try {
+			BSC1.getFile((ShockNodeId) null, new ByteArrayOutputStream());
+			fail("called get file w/ null arg");
+		} catch (NullPointerException npe) {
+			assertThat("no file exc string incorrect", npe.getLocalizedMessage(), 
+					is("id may not be null"));
 		}
 		try {
 			BSC1.getFile(sn.getId(), new ByteArrayOutputStream());
@@ -645,12 +711,21 @@ public class ShockTests {
 			assertThat("no file exc string incorrect", ioe.getLocalizedMessage(), 
 					is("Neither the shock node nor the file may be null"));
 		}
-		//can't test with sn == null since method call is ambiguous
 		sn.delete();
+		
+		sn = addNode(BSC1, "Been shopping? No, I've been shopping", "filename",
+				null);
+		BSC1.deleteNode(sn.getId());
+		try {
+			BSC1.getFile(sn, new ByteArrayOutputStream());
+		} catch (ShockNoNodeException snne) {
+			assertThat("correct exception message", snne.getLocalizedMessage(),
+					is("Node not found"));
+		}
 	}
 	
 	@Test
-	public void getNodeNulls() throws Exception {
+	public void addNodeNulls() throws Exception {
 		Map<String, Object> attribs = makeSomeAttribs("wuggawugga");
 		try {
 			BSC1.addNode(null);
@@ -698,8 +773,6 @@ public class ShockTests {
 	
 	@Test
 	public void ids() throws Exception {
-		//will throw exception if doesn't process good uuid
-		new ShockUserId("cbf19927-1e04-456c-b2c3-812edd90fa68");
 		ShockNodeId id1 = new ShockNodeId("cbf19927-1e04-456c-b2c3-812edd90fa68");
 		ShockNodeId id2 = new ShockNodeId("cbf19927-1e04-456c-b2c3-812edd90fa68");
 		assertTrue("id equality failed", id1.equals(id1));
@@ -719,43 +792,25 @@ public class ShockTests {
 						is("id must be a UUID hex string"));
 			}
 		}
-		for (String uuid: badUUIDs) {
-			try {
-				new ShockUserId(uuid);
-				fail("User id accepted invalid id string " + uuid);
-			} catch (IllegalArgumentException iae) {
-				assertThat("Bad exception message", iae.getLocalizedMessage(),
-						is("id must be a UUID hex string"));
-			}
-		}
 	}
 	
 	@Test
 	public void generalAcls() throws Exception {
-		try {
-			new ShockACLType("invalid type") ;
-			fail("invalid acl type accepted");
-		} catch (IllegalArgumentException iae) {
-			assertThat("wrong exception string for bad acl type", iae.getLocalizedMessage(),
-					is("invalid type is not a valid acl type"));
-		}
-		ShockACLType owner = new ShockACLType("owner");
 		ShockNode sn = BSC1.addNode();
 		assertTrue("acl access methods produce different acls",
 				sn.getACLs().equals(BSC1.getACLs(sn.getId())));
-		ShockACL acl1 = sn.getACLs(owner);
-		ShockACL acl2 = BSC1.getACLs(sn.getId(), owner);
+		ShockACL acl1 = sn.getACLs(ShockACLType.OWNER);
+		ShockACL acl2 = BSC1.getACLs(sn.getId(), ShockACLType.OWNER);
 		assertTrue("acl owner access methods produce different acls",
 				acl1.equals(acl2));
 		assertTrue("owners for same node are different",
 				acl1.getOwner().equals(acl1.getOwner()));
 		assertTrue("same acls aren't equal", acl1.equals(acl1));
-		assertFalse("acl equal to different type", acl1.equals(owner));
+		assertFalse("acl equal to different type",
+				acl1.equals(ShockACLType.OWNER));
 		
-		List<ShockACLType> acls = Arrays.asList(new ShockACLType("all"),
-				new ShockACLType("read"), new ShockACLType("write"),
-				new ShockACLType("delete"), new ShockACLType("all"),
-				new ShockACLType());
+		List<ShockACLType> acls = Arrays.asList(ShockACLType.ALL,
+				ShockACLType.READ, ShockACLType.WRITE, ShockACLType.DELETE);
 		for (ShockACLType acl: acls) {
 			ShockACL sacl = sn.getACLs(acl);
 			assertTrue(String.format("%s subset of acls are different", acl.getType()),
@@ -783,118 +838,255 @@ public class ShockTests {
 		assertThat("only owner in read acl", acls.getRead(), is(Arrays.asList(USER1_SID)));
 		assertThat("only owner in write acl", acls.getWrite(), is(Arrays.asList(USER1_SID)));
 		assertThat("only owner in delete acl", acls.getDelete(), is(Arrays.asList(USER1_SID)));
-		List<String> singleAcls = Arrays.asList("read", "write", "delete");
-		for (String aclTypeString: singleAcls) {
-			ShockACLType aclType = new ShockACLType(aclTypeString);
-			failAddAcl(BSC1, null, Arrays.asList(OTHER_GUY.getUserId()), aclType,
+		List<ShockACLType> singleAcls = Arrays.asList(ShockACLType.READ,
+				ShockACLType.WRITE, ShockACLType.DELETE);
+		for (ShockACLType aclType: singleAcls) {
+			failAddAcl(BSC1, null, Arrays.asList(USER2.getUserId()), aclType,
 					new NullPointerException("id cannot be null"));
+			
 			failAddAcl(BSC1, sn.getId(), Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failAddAcl(sn, Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
+			
 			failAddAcl(BSC1, sn.getId(), Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failAddAcl(sn, Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			
-			failRemoveAcl(BSC1, null, Arrays.asList(OTHER_GUY.getUserId()), aclType,
+			failAddAcl(BSC1, sn.getId(), null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failAddAcl(sn, null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failAddAcl(BSC1, sn.getId(), new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failAddAcl(sn, new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failAddAcl(BSC1, sn.getId(), Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
+			failAddAcl(sn, Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
+			
+			failRemoveAcl(BSC1, null, Arrays.asList(USER2.getUserId()), aclType,
 					new NullPointerException("id cannot be null"));
+			
 			failRemoveAcl(BSC1, sn.getId(), Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failRemoveAcl(sn, Arrays.asList((String) null), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
+			
 			failRemoveAcl(BSC1, sn.getId(), Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
 			failRemoveAcl(sn, Arrays.asList(""), aclType,
 					new IllegalArgumentException("user cannot be null or the empty string"));
+			
+			failRemoveAcl(BSC1, sn.getId(), null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failRemoveAcl(sn, null, aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failRemoveAcl(BSC1, sn.getId(), new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			failRemoveAcl(sn, new LinkedList<String>(), aclType,
+					new IllegalArgumentException("user list cannot be null or empty"));
+			
+			failRemoveAcl(BSC1, sn.getId(), Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
+			failRemoveAcl(sn, Arrays.asList(USER2.getUserId()), null,
+					new NullPointerException("aclType cannot be null"));
 
 			String acl = aclType.getType() + " acl";
-			BSC1.addToNodeAcl(sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), aclType);
+			
+			ShockACL retacl = BSC1.addToNodeAcl(sn.getId(),
+					Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("added user to " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
-			BSC1.removeFromNodeAcl(sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), aclType);
+			
+			retacl = BSC1.removeFromNodeAcl(sn.getId(),
+					Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("removed user from " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
-			sn.addToNodeAcl(Arrays.asList(OTHER_GUY.getUserId()), aclType);
+			
+			retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("added user to " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
-			sn.removeFromNodeAcl(Arrays.asList(OTHER_GUY.getUserId()), aclType);
+			
+			retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
+			assertThat("removed user from " + acl, getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID)));
 		}
 		
 		
-		ShockACLType ownerType = new ShockACLType("owner");
-		failAddAcl(sn, Arrays.asList(BSC1.getToken().getUserName(), OTHER_GUY.getUserId()), ownerType,
-				new ShockIllegalShareException(400, "Too many users. Nodes may have only one owner."));
-		failAddAcl(BSC1, sn.getId(), Arrays.asList(BSC1.getToken().getUserName(), OTHER_GUY.getUserId()), ownerType,
-				new ShockIllegalShareException(400, "Too many users. Nodes may have only one owner."));
-		failRemoveAcl(BSC1, sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), ownerType,
-				new ShockIllegalUnshareException(400, "Deleting ownership is not a supported request type."));
-		failRemoveAcl(sn, Arrays.asList(OTHER_GUY.getUserId()), ownerType,
-				new ShockIllegalUnshareException(400, "Deleting ownership is not a supported request type."));
+		failAddAcl(sn, Arrays.asList(BSC1.getToken().getUserName(),
+				USER2.getUserId()), ShockACLType.OWNER,
+				new ShockIllegalShareException(400,
+						"Too many users. Nodes may have only one owner."));
+		failAddAcl(BSC1, sn.getId(), Arrays.asList(
+				BSC1.getToken().getUserName(), USER2.getUserId()),
+				ShockACLType.OWNER,
+				new ShockIllegalShareException(400,
+						"Too many users. Nodes may have only one owner."));
+		failRemoveAcl(BSC1, sn.getId(), Arrays.asList(USER2.getUserId()),
+				ShockACLType.OWNER,
+				new ShockIllegalUnshareException(400,
+						"Deleting ownership is not a supported request type."));
+		failRemoveAcl(sn, Arrays.asList(USER2.getUserId()), ShockACLType.OWNER,
+				new ShockIllegalUnshareException(400,
+						"Deleting ownership is not a supported request type."));
 		
-		String owneracl = ownerType.getType() + " acl";
-		BSC1.addToNodeAcl(sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), ownerType);
-		assertThat("added user to " + owneracl, BSC2.getACLs(sn.getId()).getOwner(),
+		String owneracl = ShockACLType.OWNER.getType() + " acl";
+		ShockACL retacl = BSC1.addToNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), ShockACLType.OWNER);
+		assertThat("added user to " + owneracl, retacl.getOwner(),
 				is(USER2_SID));
-		//interesting, you can own a shock node but not be able to read it
-		//Jared says he's going to fix this
-		BSC2.addToNodeAcl(sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), new ShockACLType("read"));
+		assertThat("added user to " + owneracl,
+				BSC2.getACLs(sn.getId()).getOwner(), is(USER2_SID));
+		
+		assertThat("username correct", retacl.getOwner().getUsername(),
+				is(USER2_SID.getUsername()));
+		if (!VERSION.satisfies(SHOCK_V0_8)) {
+			assertThat("username correct", retacl.getOwner().getUsername(),
+					is(USER2.getUserId()));
+		}
+		assertThat("user id correct", retacl.getOwner().getID(),
+				is(USER2_SID.getID()));
+		if (VERSION.satisfies(SHOCK_V0_8)) {
+			//you can own a shock node but not be able to read it
+			BSC2.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()),
+					ShockACLType.READ);
+		}
 		ShockNode sn2 = BSC2.getNode(sn.getId());
-		sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()), ownerType);
+		retacl = sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()),
+				ShockACLType.OWNER);
+		assertThat("added user to " + owneracl, retacl.getOwner(),
+				is(USER1_SID));
 		assertThat("added user to " + owneracl, sn.getACLs().getOwner(),
 				is(USER1_SID));
-		sn.removeFromNodeAcl(Arrays.asList(OTHER_GUY.getUserId()), new ShockACLType("read"));
+		sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()),
+				ShockACLType.READ);
 		
 		
-		ShockACLType allType = new ShockACLType("all");
-		BSC1.addToNodeAcl(sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), allType);
-		for (String aclTypeString: singleAcls) {
-			ShockACLType aclType = new ShockACLType(aclTypeString);
+		retacl = BSC1.addToNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		for (ShockACLType aclType: singleAcls) {
+			assertThat("added user to " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 		}
-		BSC1.removeFromNodeAcl(sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), allType);
-		for (String aclTypeString: singleAcls) {
-			ShockACLType aclType = new ShockACLType(aclTypeString);
+		retacl = BSC1.removeFromNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		for (ShockACLType aclType: singleAcls) {
+			assertThat("removed user from " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
 		}
-		sn.addToNodeAcl(Arrays.asList(OTHER_GUY.getUserId()), allType);
-		for (String aclTypeString: singleAcls) {
-			ShockACLType aclType = new ShockACLType(aclTypeString);
+		retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL);
+		for (ShockACLType aclType: singleAcls) {
+			assertThat("added user to " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 		}
-		sn.removeFromNodeAcl(Arrays.asList(OTHER_GUY.getUserId()), allType);
-		for (String aclTypeString: singleAcls) {
-			ShockACLType aclType = new ShockACLType(aclTypeString);
+		retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL);
+		for (ShockACLType aclType: singleAcls) {
+			assertThat("removed user from " + aclType.getType() + " acl",
+					getAcls(retacl, aclType),
+					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
 		}
 		
-		failAddAcl(BSC2, sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), allType,
-				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
-		failAddAcl(sn2, Arrays.asList(OTHER_GUY.getUserId()), allType,
-				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
-		failRemoveAcl(BSC2, sn.getId(), Arrays.asList(OTHER_GUY.getUserId()), allType,
-				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
-		failRemoveAcl(sn2, Arrays.asList(OTHER_GUY.getUserId()), allType,
-				new ShockIllegalShareException(400, "Only the node owner can edit/view node ACL's"));
+		String failAddErr =
+				"Users that are not node owners can only delete themselves from ACLs.";
+		//TODO this needs to be a lot smarter. But for now...
+		if (VERSION.satisfies(SHOCK_V0_8)) {
+			failAddErr = "Only the node owner can edit/view node ACL's";
+		}
+		
+		failAddAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL,
+				new ShockIllegalShareException(400, failAddErr));
+		failAddAcl(sn2, Arrays.asList(USER2.getUserId()), ShockACLType.ALL,
+				new ShockIllegalShareException(400, failAddErr));
+		if (VERSION.satisfies(SHOCK_V0_8)) {
+			failRemoveAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()),
+					ShockACLType.ALL,
+					new ShockIllegalShareException(400, failAddErr));
+			failRemoveAcl(sn2, Arrays.asList(USER2.getUserId()),
+					ShockACLType.ALL,
+					new ShockIllegalShareException(400, failAddErr));
+		} else {
+			// test removing self from ACLs
+			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+					ShockACLType.ALL);
+			for (ShockACLType acltype: singleAcls) {
+				ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
+						Arrays.asList(USER2.getUserId()), acltype);
+				assertThat("removed user from " + acltype.getType() + " acl",
+						getAcls(newacl, acltype),
+						is(Arrays.asList(USER1_SID)));
+				assertThat("removed user from " + acltype.getType() + " acl",
+						getAcls(BSC1, sn.getId(), acltype),
+						is(Arrays.asList(USER1_SID)));
+			}
+			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+					ShockACLType.ALL);
+			ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
+					Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+			for (ShockACLType acltype: singleAcls) {
+				assertThat("removed user from " + acltype.getType() + " acl",
+						getAcls(newacl, acltype),
+						is(Arrays.asList(USER1_SID)));
+			}
+		}
 		
 		ShockNodeId id = sn.getId();
 		sn.delete();
-		//TODO fix this if Jared fixes the error
-		failAddAcl(BSC1, id, Arrays.asList(OTHER_GUY.getUserId()), allType,
-				new ShockHttpException(500, "Err@node_Read:LoadNode: not found"));
+		ShockHttpException ex = new ShockNoNodeException(
+				404, "Node not found");
+		if (VERSION.satisfies(SHOCK_V0_8)) {
+			ex = new ShockHttpException(
+					500, "Err@node_Read:LoadNode: not found");
+		}
+		failAddAcl(BSC1, id, Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL, ex);
 		
 	}
 	
+	private List<ShockUserId> getAcls(ShockACL acl, ShockACLType type) {
+		if (type.getType().equals("read")) {
+			return acl.getRead();
+		}
+		if (type.getType().equals("write")) {
+			return acl.getWrite();
+		}
+		if (type.getType().equals("delete")) {
+			return acl.getDelete();
+		}
+		throw new RuntimeException("can't handle that acl type here");
+	}
+
 	private List<ShockUserId> getAcls(BasicShockClient cli, ShockNodeId id,
 			ShockACLType type) throws Exception {
 		if (type.getType().equals("read")) {
@@ -982,6 +1174,7 @@ public class ShockTests {
 		} catch (ShockAuthorizationException aue) {
 			assertThat("auth exception string is correct", aue.getLocalizedMessage(),
 					is("User Unauthorized"));
+			assertThat("correct code", aue.getHttpCode(), is(401));
 		}
 		return sn;
 	}

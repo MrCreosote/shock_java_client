@@ -35,20 +35,34 @@ abstract class ShockResponse {
 			if (status == 401) {
 				throw new ShockAuthorizationException(getStatus(), getError());
 			} else if (status == 400) {
+				// this should never actually happen since getFile() checks
+				// that the node has a file before trying to get it. Leave it
+				// in just in case
 				if (getError().equals("Node has no file")) {
 					throw new ShockNoFileException(getStatus(), getError());
 				} else if (getError().equals("Node does not exist")) {
-					throw new ShockNoNodeException(getStatus(), getError());
+					throw new ShockNoNodeException(getStatus(),
+							// Make response consistent for different versions
+							"Node not found");
 				} else if (getError().equals(
 						"Too many users. Nodes may have only one owner.") ||
 						getError().equals(
-								"Only the node owner can edit/view node ACL's")) {
+								"Only the node owner can edit/view node ACL's")
+						|| getError().equals(
+								"Users that are not node owners can only delete themselves from ACLs.")
+						) {
 					throw new ShockIllegalShareException(
 							getStatus(), getError());
 				} else if (getError().equals(
 						"Deleting ownership is not a supported request type.")) {
 					throw new ShockIllegalUnshareException(
 							getStatus(), getError());
+				} else {
+					throw new ShockHttpException(getStatus(), getError());
+				}
+			} else if (status == 404) {
+				if (getError().equals("Node not found")) {
+					throw new ShockNoNodeException(getStatus(), getError());
 				} else {
 					throw new ShockHttpException(getStatus(), getError());
 				}
