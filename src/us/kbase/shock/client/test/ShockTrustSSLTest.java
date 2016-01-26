@@ -49,6 +49,8 @@ public class ShockTrustSSLTest {
 				Paths.get(ShockTestCommon.getTempDir()));
 		System.out.println("Using Mongo temp dir " + MONGO.getTempDir());
 		
+		System.out.println("Passing version " +
+				ShockTestCommon.getShockVersion() + " to Shock controller");
 		SHOCK = new ShockController(
 				ShockTestCommon.getShockExe(),
 				ShockTestCommon.getShockVersion(),
@@ -58,7 +60,8 @@ public class ShockTrustSSLTest {
 				"ShockTests_ShockDB",
 				"foo",
 				"foo");
-		System.out.println("Shock controller version: " + SHOCK.getVersion());
+		System.out.println("Shock controller registered version: "
+				+ SHOCK.getVersion());
 		if (SHOCK.getVersion() == null) {
 			System.out.println(
 					"Unregistered version - Shock may not start correctly");

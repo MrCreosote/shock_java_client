@@ -81,8 +81,8 @@ See the Javadocs for more information.
 Compatibility
 -------------
 
-Tested against Shock 0.8.23, 0.9.6, and 0.9.12. Some features are unsupported
-by earlier versions (see the Javadoc).
+Tested against Shock 0.8.23, 0.9.6, 0.9.12, and 0.9.13. Some features are
+unsupported by earlier versions (see the Javadoc).
 
 Build
 -----

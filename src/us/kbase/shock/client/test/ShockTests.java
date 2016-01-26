@@ -84,6 +84,8 @@ public class ShockTests {
 				Paths.get(ShockTestCommon.getTempDir()));
 		System.out.println("Using Mongo temp dir " + MONGO.getTempDir());
 		
+		System.out.println("Passing version " +
+				ShockTestCommon.getShockVersion() + " to Shock controller");
 		SHOCK = new ShockController(
 				ShockTestCommon.getShockExe(),
 				ShockTestCommon.getShockVersion(),
@@ -93,7 +95,8 @@ public class ShockTests {
 				"ShockTests_ShockDB",
 				"foo",
 				"foo");
-		System.out.println("Shock controller version: " + SHOCK.getVersion());
+		System.out.println("Shock controller registered version: "
+				+ SHOCK.getVersion());
 		if (SHOCK.getVersion() == null) {
 			System.out.println(
 					"Unregistered version - Shock may not start correctly");
@@ -137,7 +140,8 @@ public class ShockTests {
 		}
 		VERSION = Version.valueOf(BSC1.getShockVersion());
 //		bscNoAuth = new BasicShockClient(url);
-		System.out.println("Set up shock clients");
+		System.out.println("Set up shock clients for Shock version " +
+				BSC1.getShockVersion());
 		USER1_SID = BSC1.addNode().getACLs().getOwner();
 		USER2_SID = BSC2.addNode().getACLs().getOwner();
 	}
@@ -158,6 +162,12 @@ public class ShockTests {
 		//account for clockskew
 		long issued = exptok.getIssueDate().getTime();
 		long sleep = Math.max(issued - new Date().getTime(), 1000);
+		//TODO remove when this test works consistently, still fails occasionally
+		System.out.println("setExpiredToken");
+		System.out.println("issued: " + issued);
+		System.out.println("now: " + new Date().getTime());
+		System.out.println("sleep: " + sleep);
+		
 		Thread.sleep(sleep);
 		try {
 			BSC2.updateToken(exptok);
