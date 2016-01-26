@@ -1,3 +1,12 @@
+VERSION: 0.0.10 (Released 1/26/2015)
+-----------------------------------------
+
+NEW FEATURES:
+- Add compatibility with Shock 0.9.13.
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- None
+
 VERSION: 0.0.9 (Released 1/24/2015)
 -----------------------------------------
 
