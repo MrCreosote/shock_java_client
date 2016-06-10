@@ -1209,4 +1209,10 @@ public class ShockTests {
 		//will throw errors if doesn't accept md5
 		new ShockVersionStamp("e90c05e51aa22e53daec604c815962f3");
 	}
+	
+	@Test
+	public void getRemoteVersion() throws Exception {
+		String v = BSC1.getRemoteVersion();
+		assertThat("incorrect version", Version.valueOf(v), is(VERSION));
+	}
 }

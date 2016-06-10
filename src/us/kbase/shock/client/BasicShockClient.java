@@ -59,7 +59,7 @@ import us.kbase.shock.client.exceptions.ShockNoFileException;
  */
 public class BasicShockClient {
 	
-	private final String version;
+	private String version;
 	private final URI baseurl;
 	private final URI nodeurl;
 	private static CloseableHttpClient client;
@@ -180,36 +180,17 @@ public class BasicShockClient {
 		if (turl.charAt(turl.length() - 1) != '/') {
 			turl = turl + "/";
 		}
+		try {
+			baseurl = new URL(turl).toURI();
+		} catch (URISyntaxException use) {
+			throw new RuntimeException(use); //something went badly wrong 
+		}
 		if (!(url.getProtocol().equals("http") ||
 				url.getProtocol().equals("https"))) {
 			throw new InvalidShockUrlException(turl.toString());
 			
 		}
-		final CloseableHttpResponse response = client.execute(
-				new HttpGet(turl));
-		final Map<String, Object> shockresp;
-		try {
-			final String resp = EntityUtils.toString(response.getEntity());
-			@SuppressWarnings("unchecked")
-			Map<String, Object> respobj = mapper.readValue(resp, Map.class);
-			shockresp = respobj;
-		} catch (JsonParseException jpe) {
-			throw new InvalidShockUrlException(turl.toString(), jpe);
-		} finally {
-			response.close();
-		}
-		if (!shockresp.containsKey("id")) {
-			throw new InvalidShockUrlException(turl.toString());
-		}
-		if (!shockresp.get("id").equals("Shock")) {
-			throw new InvalidShockUrlException(turl.toString());
-		}
-		version = (String) shockresp.get("version");
-		try {
-			baseurl = new URL(turl).toURI();
-		} catch (URISyntaxException use) {
-			throw new Error(use); //something went badly wrong 
-		}
+		getRemoteVersion();
 		nodeurl = baseurl.resolve("node/");
 	}
 	
@@ -284,10 +265,42 @@ public class BasicShockClient {
 		return uriToUrl(baseurl);
 	}
 	
-	/** Get the version of the Shock server.
+	/** Get the version of the Shock server. This version is cached in the
+	 * client on startup and after getRemoteVersion() is called.
 	 * @return the version.
 	 */
 	public String getShockVersion() {
+		return version;
+	}
+	
+	/** Fetch the version from the Shock server and cache it client side.
+	 * @return the version.
+	 * @throws IOException if an IO error occurs.
+	 * @throws InvalidShockUrlException if the url no longer points to a Shock
+	 * server.
+	 */
+	public String getRemoteVersion() throws IOException,
+			InvalidShockUrlException {
+		final CloseableHttpResponse response = client.execute(
+				new HttpGet(baseurl));
+		final Map<String, Object> shockresp;
+		try {
+			final String resp = EntityUtils.toString(response.getEntity());
+			@SuppressWarnings("unchecked")
+			Map<String, Object> respobj = mapper.readValue(resp, Map.class);
+			shockresp = respobj;
+		} catch (JsonParseException jpe) {
+			throw new InvalidShockUrlException(baseurl.toString(), jpe);
+		} finally {
+			response.close();
+		}
+		if (!shockresp.containsKey("id")) {
+			throw new InvalidShockUrlException(baseurl.toString());
+		}
+		if (!shockresp.get("id").equals("Shock")) {
+			throw new InvalidShockUrlException(baseurl.toString());
+		}
+		version = (String) shockresp.get("version");
 		return version;
 	}
 	
