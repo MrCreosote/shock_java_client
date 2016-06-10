@@ -1,4 +1,15 @@
-VERSION: 0.0.10 (Released 1/26/2015)
+VERSION: 0.0.11 (Released 6/10/2016)
+-----------------------------------------
+
+NEW FEATURES:
+- Added getRemoteVersion() function to the client. This will allow detection
+  of shock upgrades, but more usefully makes a cheap call to shock to ensure
+  it's up.
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- None
+
+VERSION: 0.0.10 (Released 1/26/2016)
 -----------------------------------------
 
 NEW FEATURES:
@@ -7,7 +18,7 @@ NEW FEATURES:
 UPDATED FEATURES / MAJOR BUG FIXES:
 - None
 
-VERSION: 0.0.9 (Released 1/24/2015)
+VERSION: 0.0.9 (Released 1/24/2016)
 -----------------------------------------
 
 NEW FEATURES:
