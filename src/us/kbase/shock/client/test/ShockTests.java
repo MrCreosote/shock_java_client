@@ -1,5 +1,6 @@
 package us.kbase.shock.client.test;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,10 +27,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.ReaderInputStream;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-//import org.junit.Ignore;
 import org.junit.Test;
 
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
@@ -64,7 +66,6 @@ public class ShockTests {
 	
 	private static BasicShockClient BSC1;
 	private static BasicShockClient BSC2;
-//	private static BasicShockClient bscNoAuth;
 	private static AuthUser USER2;
 	
 	private static ShockUserId USER1_SID;
@@ -74,7 +75,7 @@ public class ShockTests {
 	private static ShockController SHOCK;
 	
 	private static Version VERSION;
-	private final static String SHOCK_V0_8 = ">=0.8 & < 0.9";
+	private final static String LT0_9_12 = "< 0.9.12";
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -139,7 +140,6 @@ public class ShockTests {
 					ioe.getLocalizedMessage());
 		}
 		VERSION = Version.valueOf(BSC1.getShockVersion());
-//		bscNoAuth = new BasicShockClient(url);
 		System.out.println("Set up shock clients for Shock version " +
 				BSC1.getShockVersion());
 		USER1_SID = BSC1.addNode().getACLs().getOwner();
@@ -312,6 +312,10 @@ public class ShockTests {
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
 		try {
+			sn.getFile();
+			fail("Method ran on deleted node");
+		} catch (ShockNodeDeletedException snde) {}
+		try {
 			sn.getFileInformation();
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
@@ -429,7 +433,93 @@ public class ShockTests {
 		}
 	}
 	
-//	@Ignore
+	@Test
+	public void getFileViaInputStreamArrayRead() throws Exception {
+		/* this is mostly tested in the streaming files tests, which fully
+		 * exercise the standard paths. This tests the read(byte, int, int)
+		 * method other than fetching another chunk.
+		 */
+		
+		String f = "wheee!";
+		ShockNode sn = BSC1.addNode(new ByteArrayInputStream(
+				f.getBytes(StandardCharsets.UTF_8)), "foo", "UTF-8");
+		InputStream is = sn.getFile();
+		byte[] b = new byte[7];
+		failRead(is, null, 1, 3, new NullPointerException());
+		failRead(is, b, -1, 3, new IndexOutOfBoundsException());
+		failRead(is, b, 0, -1, new IndexOutOfBoundsException());
+		failRead(is, b, 1, 7, new IndexOutOfBoundsException());
+		
+		assertThat("incorrect read length", is.read(b, 0, 0), is(0));
+		assertThat("incorrect read length", is.read(b, 0, 2), is(2));
+		assertThat("incorrect read", new String(b, 0, 2, "UTF-8"), is("wh"));
+		assertThat("incorrect read length", is.read(b, 0, 7), is(4));
+		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("eee!"));
+		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
+		is.close();
+		
+		is = sn.getFile();
+		assertThat("incorrect read length", is.read(b, 0, 2), is(2));
+		assertThat("incorrect read", new String(b, 0, 2, "UTF-8"), is("wh"));
+		assertThat("incorrect read length", is.read(b, 1, 3), is(3));
+		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("weee"));
+		assertThat("incorrect read length", is.read(b, 3, 2), is(1));
+		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("wee!"));
+		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
+		
+		
+	}
+	
+	private void failRead(InputStream is, byte[] b, int off, int len,
+			Exception exp) {
+		try {
+			is.read(b, off, len);
+		} catch (Exception got) {
+			assertExceptionCorrect(got, exp);
+		}
+	}
+	
+	public static void assertExceptionCorrect(
+			final Exception got,
+			final Exception expected) {
+		assertThat("incorrect exception. trace:\n" +
+				ExceptionUtils.getStackTrace(got),
+				got.getLocalizedMessage(),
+				is(expected.getLocalizedMessage()));
+		assertThat("incorrect exception type", got, is(expected.getClass()));
+	}
+	
+
+	@Test
+	public void getFileViaInputStreamByteRead() throws Exception {
+		/* test reading files one byte at a time, which is not exercised by
+		 * the other tests.
+		 */
+		
+		// won't get new chunk
+		ShockNode sn = writeFileToNode(null, "aaaaaaaaaa", 4999999,
+				"abcdefghij", "foo", "UTF-8", 1);
+		InputStream is = sn.getFile();
+		byte[] b = new byte[49999990];
+		is.read(b);
+		int offset = 97; //a in ascii
+		for (int i = 0; i < 10; i++) {
+			assertThat("incorrect read", is.read(), is(i + offset));
+		}
+		assertThat("incorrect read", is.read(), is(-1));
+		
+		// will get new 1 byte chunk
+		sn = writeFileToNode(null, "aaaaaaaaaa", 4999999,
+				"abcdefghijk", "foo", "UTF-8", 1);
+		is = sn.getFile();
+		b = new byte[49999990];
+		is.read(b);
+		for (int i = 0; i < 11; i++) {
+			assertThat("incorrect read", is.read(), is(i + offset));
+		}
+		assertThat("incorrect read", is.read(), is(-1));
+	}
+	
 	@Test
 	public void saveAndGetStreamingFiles() throws Exception {
 		int chunksize = BasicShockClient.getChunkSize();
@@ -464,12 +554,12 @@ public class ShockTests {
 		verifyStreamedNode(sn, attribs, sb.toString(), minwrites, sbs, "filename", "JSON", 1);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + "~", "filename", null, 2);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + "~", "filename", null, 2);
+		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + "~", "a", null, 2);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + "~", "a", null, 2);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + ch2, "filename", "", 3);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "filename", null, 3);
+		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + ch2, "b", "", 3);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "b", null, 3);
 		sn.delete();
 		
 		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", "", 4);
@@ -495,53 +585,75 @@ public class ShockTests {
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
-		//TODO restore when dropping support for 0.8.23, doesn't work on 0.9.6 but works on 0.9.12
-//		assertThat("filename correct", sn.getFileInformation().getName(),
-//				is(filename));
+		if (!VERSION.satisfies(LT0_9_12)) { // might work for earlier versions, haven't tested.
+			assertThat("filename correct", sn.getFileInformation().getName(),
+					is(filename));
+		}
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
-		System.out.println("ID " + id + " Verifying " + filesize + "b file... ");
+		System.out.println("ID " + id + " Verifying " + filesize + "b file via outputstream... ");
 
 		OutputStreamToInputStream<String> osis =
 				new OutputStreamToInputStream<String>() {
 					
 			@Override
 			protected String doRead(InputStream is) throws Exception {
-				byte[] data = new byte[readlen];
-				int read = read(is, data);
-				long size = 0;
-				long reads = 1;
-				while (reads <= writes) {
-					assertThat("file incorrect at pos " + size, 
-							new String(data, StandardCharsets.UTF_8),
-							is(string));
-					size += read;
-					reads++;
-					read = read(is, data);
-				}
-				byte[] finaldata = new byte[finallen];
-				int read2 = read(is, finaldata);
-				assertThat("correct length of final string for node "
-						+ sn.getId().getId(), read + read2, is(finallen));
-				byte[] lastgot = new byte[read + read2];
-				System.arraycopy(data, 0, lastgot, 0, read);
-				System.arraycopy(finaldata, 0, lastgot, read, read2);
-				if (finallen > 0) {
-					final String l = new String(lastgot, StandardCharsets.UTF_8);
-					assertThat("file incorrect at last pos " + size, l, is(last));
-					size += read + read2;
-				}
-				data = new byte[1];
-				if (is.read(data) > 0) {
-					fail("file is too long");
-				}
-				assertThat("correct file size for node " + sn.getId().getId(),
-						size, is(filesize));
+				verifyStreamedNode(sn, string, writes, last, is);
 				return null;
 			}
+
+
 		};
 		BSC1.getFile(sn, osis);
 		osis.close();
 		System.out.println("\tID " + id + " Verifying done.");
+		
+		System.out.println("ID " + id + " Verifying " + filesize + "b file via inputstream... ");
+		InputStream is = BSC1.getFile(sn);
+		verifyStreamedNode(sn, string, writes, last, is);
+		is.close();
+	}
+	
+	private void verifyStreamedNode(
+			final ShockNode sn,
+			final String string,
+			final long writes,
+			final String last,
+			final InputStream is)
+			throws IOException {
+		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
+		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
+		final long filesize = readlen * writes + finallen;
+		byte[] data = new byte[readlen];
+		int read = read(is, data);
+		long size = 0;
+		long reads = 1;
+		while (reads <= writes) {
+			assertThat("file incorrect at pos " + size, 
+					new String(data, StandardCharsets.UTF_8),
+					is(string));
+			size += read;
+			assertThat("read size correct", read, is(readlen));
+			reads++;
+			read = read(is, data);
+		}
+		byte[] finaldata = new byte[finallen];
+		int read2 = read(is, finaldata);
+		assertThat("correct length of final string for node "
+				+ sn.getId().getId(), read + read2, is(finallen));
+		byte[] lastgot = new byte[read + read2];
+		System.arraycopy(data, 0, lastgot, 0, read);
+		System.arraycopy(finaldata, 0, lastgot, read, read2);
+		if (finallen > 0) {
+			final String l = new String(lastgot, StandardCharsets.UTF_8);
+			assertThat("file incorrect at last pos " + size, l, is(last));
+			size += read + read2;
+		}
+		data = new byte[1];
+		if (is.read(data) > 0) {
+			fail("file is too long");
+		}
+		assertThat("correct file size for node " + sn.getId().getId(),
+				size, is(filesize));
 	}
 	
 	private int read(final InputStream file, final byte[] b)
@@ -622,23 +734,32 @@ public class ShockTests {
 	private void testFile(String content, String name, String format, ShockNode sn)
 			throws Exception {
 		ShockNode snget = BSC1.getNode(sn.getId());
+		String utf8 = StandardCharsets.UTF_8.name();
+		
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		BSC1.getFile(sn, bos);
-		String filecon1 = bos.toString(StandardCharsets.UTF_8.name());
+		String filecon1 = bos.toString(utf8);
 		
 		bos = new ByteArrayOutputStream();
 		BSC1.getFile(sn.getId(), bos);
-		String filecon2 = bos.toString(StandardCharsets.UTF_8.name());
+		String filecon2 = bos.toString(utf8);
 		
 		bos = new ByteArrayOutputStream();
 		snget.getFile(bos);
-		String filefromnode = bos.toString(StandardCharsets.UTF_8.name());
+		String filefromnode = bos.toString(utf8);
+		
+		 
+		String filecon1is = IOUtils.toString(BSC1.getFile(sn), utf8);
+		String filecon2is = IOUtils.toString(BSC1.getFile(sn.getId()), utf8);
+		String filefromnodeIs = IOUtils.toString(sn.getFile(), utf8);
+		
 		Set<String> digestTypes = snget.getFileInformation().getChecksumTypes();
 		assertTrue("has md5", digestTypes.contains("md5"));
 		assertThat("unequal md5", snget.getFileInformation().getChecksum("md5"),
 				is(DigestUtils.md5Hex(content)));
 		try {
-			snget.getFileInformation().getChecksum("this is not a checksum type");
+			snget.getFileInformation().getChecksum(
+					"this is not a checksum type");
 			fail("got checksum type that doesn't exist");
 		} catch (IllegalArgumentException iae) {
 			assertThat("exception string incorrect", 
@@ -649,6 +770,12 @@ public class ShockTests {
 				is(filecon1));
 		assertThat("files from the 2 polymorphic getFile() methods different",
 				filecon1, is(filecon2));
+		assertThat("files from node w/ input & outputstreams differ",
+				filefromnode, is(filefromnodeIs));
+		assertThat("inpustream: file from node != file from client",
+				filefromnodeIs, is(filecon1is));
+		assertThat("inputstream: files from the 2 polymorphic getFile() methods different",
+				filecon1is, is(filecon2is));
 		assertThat("file content unequal", filecon1, is(content));
 		assertThat("file name unequal", snget.getFileInformation().getName(),
 				is(name));
@@ -682,19 +809,40 @@ public class ShockTests {
 		try {
 			sn.getFile(null);
 			fail("called get file w/ null arg");
-		} catch (IllegalArgumentException ioe) {
+		} catch (NullPointerException ioe) {
 			assertThat("no file exc string incorrect", ioe.getLocalizedMessage(), 
-					is("Neither the shock node nor the file may be null"));
+					is("os"));
+		}
+		try {
+			sn.getFile();
+			fail("Got file from node w/o file");
+		} catch (ShockNoFileException snfe) {
+			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
+					is("Node has no file"));
 		}
 		try {
 			BSC1.getFile((ShockNode) null, new ByteArrayOutputStream());
 			fail("called get file w/ null arg");
-		} catch (IllegalArgumentException iae) {
+		} catch (NullPointerException iae) {
 			assertThat("no file exc string incorrect", iae.getLocalizedMessage(), 
-					is("Neither the shock node nor the file may be null"));
+					is("sn"));
+		}
+		try {
+			BSC1.getFile((ShockNode) null);
+			fail("called get file w/ null arg");
+		} catch (NullPointerException iae) {
+			assertThat("no file exc string incorrect", iae.getLocalizedMessage(), 
+					is("sn"));
 		}
 		try {
 			BSC1.getFile(sn, new ByteArrayOutputStream());
+			fail("Got file from node w/o file");
+		} catch (ShockNoFileException snfe) {
+			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
+					is("Node has no file"));
+		}
+		try {
+			BSC1.getFile(sn);
 			fail("Got file from node w/o file");
 		} catch (ShockNoFileException snfe) {
 			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
@@ -708,7 +856,21 @@ public class ShockTests {
 					is("id may not be null"));
 		}
 		try {
+			BSC1.getFile((ShockNodeId) null);
+			fail("called get file w/ null arg");
+		} catch (NullPointerException npe) {
+			assertThat("no file exc string incorrect", npe.getLocalizedMessage(), 
+					is("id may not be null"));
+		}
+		try {
 			BSC1.getFile(sn.getId(), new ByteArrayOutputStream());
+			fail("Got file from node w/o file");
+		} catch (ShockNoFileException snfe) {
+			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
+					is("Node has no file"));
+		}
+		try {
+			BSC1.getFile(sn.getId());
 			fail("Got file from node w/o file");
 		} catch (ShockNoFileException snfe) {
 			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
@@ -717,9 +879,9 @@ public class ShockTests {
 		try {
 			BSC1.getFile(sn, null);
 			fail("called get file w/ null arg");
-		} catch (IllegalArgumentException ioe) {
+		} catch (NullPointerException ioe) {
 			assertThat("no file exc string incorrect", ioe.getLocalizedMessage(), 
-					is("Neither the shock node nor the file may be null"));
+					is("os"));
 		}
 		sn.delete();
 		
@@ -728,6 +890,12 @@ public class ShockTests {
 		BSC1.deleteNode(sn.getId());
 		try {
 			BSC1.getFile(sn, new ByteArrayOutputStream());
+		} catch (ShockNoNodeException snne) {
+			assertThat("correct exception message", snne.getLocalizedMessage(),
+					is("Node not found"));
+		}
+		try {
+			BSC1.getFile(sn);
 		} catch (ShockNoNodeException snne) {
 			assertThat("correct exception message", snne.getLocalizedMessage(),
 					is("Node not found"));
@@ -756,7 +924,14 @@ public class ShockTests {
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
-					is("filename may not be null"));
+					is("filename may not be null or empty"));
+		}
+		try {
+			addNode(BSC1, "foo", "", "foo");
+			fail("called addNode with null value");
+		} catch (IllegalArgumentException npe) {
+			assertThat("npe message incorrect", npe.getMessage(),
+					is("filename may not be null or empty"));
 		}
 		try {
 			addNode(BSC1, null, "foo", "foo", "foo");
@@ -777,7 +952,14 @@ public class ShockTests {
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
-					is("filename may not be null"));
+					is("filename may not be null or empty"));
+		}
+		try {
+			addNode(BSC1, attribs, "foo", "", null);
+			fail("called addNode with null value");
+		} catch (IllegalArgumentException npe) {
+			assertThat("npe message incorrect", npe.getMessage(),
+					is("filename may not be null or empty"));
 		}
 	}
 	
@@ -964,17 +1146,10 @@ public class ShockTests {
 		
 		assertThat("username correct", retacl.getOwner().getUsername(),
 				is(USER2_SID.getUsername()));
-		if (!VERSION.satisfies(SHOCK_V0_8)) {
-			assertThat("username correct", retacl.getOwner().getUsername(),
-					is(USER2.getUserId()));
-		}
+		assertThat("username correct", retacl.getOwner().getUsername(),
+				is(USER2.getUserId()));
 		assertThat("user id correct", retacl.getOwner().getID(),
 				is(USER2_SID.getID()));
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			//you can own a shock node but not be able to read it
-			BSC2.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()),
-					ShockACLType.READ);
-		}
 		ShockNode sn2 = BSC2.getNode(sn.getId());
 		retacl = sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()),
 				ShockACLType.OWNER);
@@ -1029,58 +1204,40 @@ public class ShockTests {
 		
 		String failAddErr =
 				"Users that are not node owners can only delete themselves from ACLs.";
-		//TODO this needs to be a lot smarter. But for now...
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			failAddErr = "Only the node owner can edit/view node ACL's";
-		}
-		
 		failAddAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL,
 				new ShockIllegalShareException(400, failAddErr));
 		failAddAcl(sn2, Arrays.asList(USER2.getUserId()), ShockACLType.ALL,
 				new ShockIllegalShareException(400, failAddErr));
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			failRemoveAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL,
-					new ShockIllegalShareException(400, failAddErr));
-			failRemoveAcl(sn2, Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL,
-					new ShockIllegalShareException(400, failAddErr));
-		} else {
-			// test removing self from ACLs
-			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL);
-			for (ShockACLType acltype: singleAcls) {
-				ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
-						Arrays.asList(USER2.getUserId()), acltype);
-				assertThat("removed user from " + acltype.getType() + " acl",
-						getAcls(newacl, acltype),
-						is(Arrays.asList(USER1_SID)));
-				assertThat("removed user from " + acltype.getType() + " acl",
-						getAcls(BSC1, sn.getId(), acltype),
-						is(Arrays.asList(USER1_SID)));
-			}
-			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL);
+
+		// test removing self from ACLs
+		sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL);
+		for (ShockACLType acltype: singleAcls) {
 			ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
-					Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
-			for (ShockACLType acltype: singleAcls) {
-				assertThat("removed user from " + acltype.getType() + " acl",
-						getAcls(newacl, acltype),
-						is(Arrays.asList(USER1_SID)));
-			}
+					Arrays.asList(USER2.getUserId()), acltype);
+			assertThat("removed user from " + acltype.getType() + " acl",
+					getAcls(newacl, acltype),
+					is(Arrays.asList(USER1_SID)));
+			assertThat("removed user from " + acltype.getType() + " acl",
+					getAcls(BSC1, sn.getId(), acltype),
+					is(Arrays.asList(USER1_SID)));
+		}
+		sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL);
+		ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		for (ShockACLType acltype: singleAcls) {
+			assertThat("removed user from " + acltype.getType() + " acl",
+					getAcls(newacl, acltype),
+					is(Arrays.asList(USER1_SID)));
 		}
 		
 		ShockNodeId id = sn.getId();
 		sn.delete();
-		ShockHttpException ex = new ShockNoNodeException(
-				404, "Node not found");
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			ex = new ShockHttpException(
-					500, "Err@node_Read:LoadNode: not found");
-		}
 		failAddAcl(BSC1, id, Arrays.asList(USER2.getUserId()),
-				ShockACLType.ALL, ex);
+				ShockACLType.ALL, new ShockNoNodeException(
+						404, "Node not found"));
 		
 	}
 	

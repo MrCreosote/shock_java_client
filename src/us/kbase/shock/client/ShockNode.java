@@ -1,6 +1,7 @@
 package us.kbase.shock.client;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
@@ -171,6 +172,21 @@ public class ShockNode extends ShockData {
 			throws ShockHttpException, IOException, TokenExpiredException {
 		checkDeleted();
 		client.getFile(this, file);
+	}
+	
+	/** Proxy for {@link BasicShockClient#getFile(ShockNode)
+	 * getFile()}.
+	 * Gets the file stored at this shock node.
+	 * @return an input stream containing the file.
+	 * @throws ShockHttpException if the file could not be retrieved from shock.
+	 * @throws IOException if an IO problem occurs.
+	 * @throws TokenExpiredException if the client's token has expired.
+	 */
+	@JsonIgnore
+	public InputStream getFile()
+			throws TokenExpiredException, ShockHttpException, IOException {
+		checkDeleted();
+		return client.getFile(this);
 	}
 	
 	/**

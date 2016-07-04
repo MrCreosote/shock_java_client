@@ -81,8 +81,7 @@ See the Javadocs for more information.
 Compatibility
 -------------
 
-Tested against Shock 0.8.23, 0.9.6, 0.9.12, and 0.9.13. Some features are
-unsupported by earlier versions (see the Javadoc).
+Tested against Shock 0.9.6 and 0.9.14.
 
 Build
 -----
@@ -190,7 +189,7 @@ Build:
 Known issues
 ------------
 
-- The filename is not set consistently.
+- The filename is not set consistently with older Shock versions.
 - If a client is created such that it trusts self-signed certificates, all
   future clients will also trust all SSCs regardless of the constructor
   arguments. Similarly, creation of a standard client means that any new
