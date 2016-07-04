@@ -591,8 +591,9 @@ public class BasicShockClient {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
 		}
-		if (filename == null) {
-			throw new IllegalArgumentException("filename may not be null");
+		if (filename == null || filename.isEmpty()) {
+			throw new IllegalArgumentException(
+					"filename may not be null or empty");
 		}
 		return _addNodeStreaming(null, file, filename, format);
 	}
@@ -623,8 +624,9 @@ public class BasicShockClient {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
 		}
-		if (filename == null) {
-			throw new IllegalArgumentException("filename may not be null");
+		if (filename == null || filename.isEmpty()) {
+			throw new IllegalArgumentException(
+					"filename may not be null or empty");
 		}
 		return _addNodeStreaming(attributes, file, filename, format);
 	}
@@ -657,7 +659,7 @@ public class BasicShockClient {
 	}
 	
 	private ShockNode _addNodeStreaming(final Map<String, Object> attributes,
-			final InputStream file, final String filename, final String format)
+			final InputStream file, String filename, final String format)
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
 		byte[] b = new byte[CHUNK_SIZE];
@@ -682,9 +684,7 @@ public class BasicShockClient {
 			}
 			// doesn't work in 0.9.6 but doesn't break anything
 			// works in 0.9.12+
-			if (filename != null && !filename.isEmpty()) {
-				mpeb.addTextBody("file_name", filename);
-			}
+			mpeb.addTextBody("file_name", filename);
 			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}

@@ -554,12 +554,12 @@ public class ShockTests {
 		verifyStreamedNode(sn, attribs, sb.toString(), minwrites, sbs, "filename", "JSON", 1);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + "~", "filename", null, 2);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + "~", "filename", null, 2);
+		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + "~", "a", null, 2);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + "~", "a", null, 2);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + ch2, "filename", "", 3);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "filename", null, 3);
+		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + ch2, "b", "", 3);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "b", null, 3);
 		sn.delete();
 		
 		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", "", 4);
@@ -924,7 +924,14 @@ public class ShockTests {
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
-					is("filename may not be null"));
+					is("filename may not be null or empty"));
+		}
+		try {
+			addNode(BSC1, "foo", "", "foo");
+			fail("called addNode with null value");
+		} catch (IllegalArgumentException npe) {
+			assertThat("npe message incorrect", npe.getMessage(),
+					is("filename may not be null or empty"));
 		}
 		try {
 			addNode(BSC1, null, "foo", "foo", "foo");
@@ -945,7 +952,14 @@ public class ShockTests {
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
-					is("filename may not be null"));
+					is("filename may not be null or empty"));
+		}
+		try {
+			addNode(BSC1, attribs, "foo", "", null);
+			fail("called addNode with null value");
+		} catch (IllegalArgumentException npe) {
+			assertThat("npe message incorrect", npe.getMessage(),
+					is("filename may not be null or empty"));
 		}
 	}
 	
