@@ -25,11 +25,6 @@ public class ShockUserId {
 	
 	// for jackson
 	private ShockUserId() {}
-	// for Shock 0.8.23, Shock 0.9.6 sends full attrib hash
-	//TODO remove when dropping support for 0.8.23
-	private ShockUserId(final String id) {
-		uuid = id;
-	}
 
 	/** Get the user's Shock ID.
 	 * @return the user's ID.
@@ -38,7 +33,7 @@ public class ShockUserId {
 		return uuid;
 	}
 
-	/** Get the username. Null for shock versions < 0.9.
+	/** Get the username.
 	 * @return the username.
 	 */
 	public String getUsername() {

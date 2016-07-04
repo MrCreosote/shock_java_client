@@ -389,20 +389,12 @@ public class BasicShockClient {
 	 * @throws TokenExpiredException if the client authorization token has
 	 * expired.
 	 */
-	public void getFile(final ShockNode sn, final OutputStream file)
+	public void getFile(final ShockNode sn, final OutputStream os)
 			throws TokenExpiredException, IOException, ShockHttpException {
-		if (sn == null || file == null) {
-			throw new IllegalArgumentException(
-					"Neither the shock node nor the file may be null");
+		if (os == null) {
+			throw new NullPointerException("os");
 		}
-		if (sn.getFileInformation().getSize() == 0) {
-			throw new ShockNoFileException(400, "Node has no file");
-		}
-		final BigDecimal size = new BigDecimal(
-				sn.getFileInformation().getSize());
-		//if there are more than 2^32 chunks we're in big trouble
-		final int chunks = size.divide(new BigDecimal(CHUNK_SIZE))
-				.setScale(0, BigDecimal.ROUND_CEILING).intValueExact();
+		final int chunks = getChunks(sn);
 		final URI targeturl = nodeurl.resolve(sn.getId().getId() +
 				getDownloadURLPrefix());
 		for (int i = 0; i < chunks; i++) {
@@ -414,9 +406,136 @@ public class BasicShockClient {
 				if (code > 299) {
 					getShockData(response, ShockNodeResponse.class); //trigger errors
 				}
-				file.write(EntityUtils.toByteArray(response.getEntity()));
+				os.write(EntityUtils.toByteArray(response.getEntity()));
 			} finally {
 				response.close();
+			}
+		}
+	}
+	private static int getChunks(final ShockNode sn)
+			throws ShockNoFileException {
+		if (sn == null) {
+			throw new NullPointerException("sn");
+		}
+		if (sn.getFileInformation().getSize() == 0) {
+			throw new ShockNoFileException(400, "Node has no file");
+		}
+		final BigDecimal size = new BigDecimal(
+				sn.getFileInformation().getSize());
+		//if there are more than 2^32 chunks we're in big trouble
+		return size.divide(new BigDecimal(CHUNK_SIZE))
+				.setScale(0, BigDecimal.ROUND_CEILING).intValueExact();
+	}
+	
+	/**
+	 * Equivalent to client.getFile(client.getNode(id))
+	 * @param id the ID of the shock node.
+	 * @returns an input stream containing the file.
+	 * @throws IOException if an IO problem occurs.
+	 * @throws ShockHttpException if the file could not be fetched from shock.
+	 * @throws TokenExpiredException if the client authorization token has
+	 * expired.
+	 */
+	public InputStream getFile(final ShockNodeId id)
+			throws IOException, ShockHttpException, TokenExpiredException {
+		return getFile(getNode(id));
+	}
+	
+	/** Get the file for this shock node. The input stream this function
+	 * returns is naturally buffered.
+	 * @param sn the shock node from which to retrieve the file.
+	 * @returns an input stream containing the file.
+	 * @throws IOException if an IO problem occurs.
+	 * @throws ShockHttpException if the file could not be fetched from shock.
+	 * @throws TokenExpiredException if the client authorization token has
+	 * expired.
+	 */
+	public InputStream getFile(final ShockNode sn)
+			throws TokenExpiredException, ShockHttpException, IOException {
+		return new ShockFileInputStream(sn);
+	}
+	
+	private class ShockFileInputStream extends InputStream {
+		
+		private final URI targeturl;
+		private final int chunks;
+		private int chunkCount = 0;
+		private byte[] chunk;
+		private int pos = 0;
+		
+		public ShockFileInputStream(final ShockNode sn)
+				throws TokenExpiredException, ShockHttpException, IOException {
+			chunks = getChunks(sn);
+			targeturl = nodeurl.resolve(sn.getId().getId() +
+					getDownloadURLPrefix());
+			getNextChunk(); // must be at least one
+		}
+		
+		private void getNextChunk() throws TokenExpiredException,
+				IOException, ShockHttpException {
+			if (chunkCount >= chunks) {
+				chunk = null;
+				return;
+			}
+			final HttpGet htg = new HttpGet(targeturl.toString() +
+					(chunkCount + 1));
+			authorize(htg);
+			final CloseableHttpResponse response = client.execute(htg);
+			try {
+				final int code = response.getStatusLine().getStatusCode();
+				if (code > 299) {
+					getShockData(response, ShockNodeResponse.class); //trigger errors
+				}
+				chunk = EntityUtils.toByteArray(response.getEntity());
+				chunkCount++;
+				pos = 0;
+			} finally {
+				response.close();
+			}
+		}
+
+		@Override
+		public int read() throws IOException {
+			if (chunk == null) {
+				return -1;
+			}
+			final int i = chunk[pos] & 0xFF;
+			pos++;
+			if (pos >= chunk.length) {
+				getNextChunkWrapExcep();
+			}
+			return i;
+		}
+
+		private void getNextChunkWrapExcep() throws IOException {
+			try {
+				getNextChunk();
+			} catch (TokenExpiredException | ShockHttpException e) {
+				throw new IOException("Couldn't fetch data from Shock: " +
+						e.getMessage(), e);
+			}
+		}
+		
+		@Override
+		public int read(byte b[], int off, int len) throws IOException {
+			if (b == null) {
+				throw new NullPointerException();
+			} else if (off < 0 || len < 0 || len > b.length - off) {
+				throw new IndexOutOfBoundsException();
+			} else if (len == 0) {
+				return 0;
+			} else if (chunk == null) {
+				return -1;
+			}
+			if (pos + len >= chunk.length) {
+				System.arraycopy(chunk, pos, b, off, chunk.length - pos);
+				final int size = chunk.length - pos;
+				getNextChunkWrapExcep(); // sets chunk to null
+				return size;
+			} else {
+				System.arraycopy(chunk, pos, b, off, len);
+				pos += len;
+				return len;
 			}
 		}
 	}
@@ -472,8 +591,9 @@ public class BasicShockClient {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
 		}
-		if (filename == null) {
-			throw new IllegalArgumentException("filename may not be null");
+		if (filename == null || filename.isEmpty()) {
+			throw new IllegalArgumentException(
+					"filename may not be null or empty");
 		}
 		return _addNodeStreaming(null, file, filename, format);
 	}
@@ -504,8 +624,9 @@ public class BasicShockClient {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
 		}
-		if (filename == null) {
-			throw new IllegalArgumentException("filename may not be null");
+		if (filename == null || filename.isEmpty()) {
+			throw new IllegalArgumentException(
+					"filename may not be null or empty");
 		}
 		return _addNodeStreaming(attributes, file, filename, format);
 	}
@@ -538,7 +659,7 @@ public class BasicShockClient {
 	}
 	
 	private ShockNode _addNodeStreaming(final Map<String, Object> attributes,
-			final InputStream file, final String filename, final String format)
+			final InputStream file, String filename, final String format)
 			throws IOException, ShockHttpException, JsonProcessingException,
 			TokenExpiredException {
 		byte[] b = new byte[CHUNK_SIZE];
@@ -561,13 +682,9 @@ public class BasicShockClient {
 			if (format != null && !format.isEmpty()) {
 				mpeb.addTextBody("format", format);
 			}
-			// causes an error for 0.8.23, makes node immutable
 			// doesn't work in 0.9.6 but doesn't break anything
-			// works in 0.9.12
-			// TODO Add when 0.8 drops support.
-//			if (filename != null && !filename.isEmpty()) {
-//				mpeb.addTextBody("file_name", filename);
-//			}
+			// works in 0.9.12+
+			mpeb.addTextBody("file_name", filename);
 			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}

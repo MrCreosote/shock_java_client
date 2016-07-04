@@ -1,3 +1,16 @@
+VERSION: 0.0.12 (Released 7/3/2016)
+-----------------------------------------
+
+BACKWARDS INCOMPATIBILITIES:
+- Dropped support for 0.8.X Shock versions.
+
+NEW FEATURES:
+- Added a getFile() method that returns an InputStream.
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- Setting the filename in the addNode() methods will now work for Shock
+  versions that support it correctly.
+
 VERSION: 0.0.11 (Released 6/10/2016)
 -----------------------------------------
 
