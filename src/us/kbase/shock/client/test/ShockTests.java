@@ -1,5 +1,6 @@
 package us.kbase.shock.client.test;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +29,7 @@ import static org.junit.Assert.fail;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.ReaderInputStream;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -431,7 +433,70 @@ public class ShockTests {
 		}
 	}
 	
-//	@Ignore
+	@Test
+	public void getFileViaInputStreamArrayRead() throws Exception {
+		/* this is mostly tested in the streaming files tests, which fully
+		 * exercise the standard paths. This tests the read(byte, int, int)
+		 * method other than fetching another chunk.
+		 */
+		
+		String f = "wheee!";
+		ShockNode sn = BSC1.addNode(new ByteArrayInputStream(
+				f.getBytes(StandardCharsets.UTF_8)), "foo", "UTF-8");
+		InputStream is = sn.getFile();
+		byte[] b = new byte[7];
+		failRead(is, null, 1, 3, new NullPointerException());
+		failRead(is, b, -1, 3, new IndexOutOfBoundsException());
+		failRead(is, b, 0, -1, new IndexOutOfBoundsException());
+		failRead(is, b, 1, 7, new IndexOutOfBoundsException());
+		
+		assertThat("incorrect read length", is.read(b, 0, 0), is(0));
+		assertThat("incorrect read length", is.read(b, 0, 2), is(2));
+		assertThat("incorrect read", new String(b, 0, 2, "UTF-8"), is("wh"));
+		assertThat("incorrect read length", is.read(b, 0, 7), is(4));
+		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("eee!"));
+		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
+		is.close();
+		
+		is = sn.getFile();
+		assertThat("incorrect read length", is.read(b, 0, 2), is(2));
+		assertThat("incorrect read", new String(b, 0, 2, "UTF-8"), is("wh"));
+		assertThat("incorrect read length", is.read(b, 1, 3), is(3));
+		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("weee"));
+		assertThat("incorrect read length", is.read(b, 3, 2), is(1));
+		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("wee!"));
+		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
+		
+		
+	}
+	
+	private void failRead(InputStream is, byte[] b, int off, int len,
+			Exception exp) {
+		try {
+			is.read(b, off, len);
+		} catch (Exception got) {
+			assertExceptionCorrect(got, exp);
+		}
+	}
+	
+	public static void assertExceptionCorrect(
+			final Exception got,
+			final Exception expected) {
+		assertThat("incorrect exception. trace:\n" +
+				ExceptionUtils.getStackTrace(got),
+				got.getLocalizedMessage(),
+				is(expected.getLocalizedMessage()));
+		assertThat("incorrect exception type", got, is(expected.getClass()));
+	}
+	
+
+	@Test
+	public void getFileViaInputStreamByteRead() throws Exception {
+		/* test reading files one byte at a time, which is not exercised by
+		 * the other tests.
+		 */
+	}
+	
 	@Test
 	public void saveAndGetStreamingFiles() throws Exception {
 		int chunksize = BasicShockClient.getChunkSize();
