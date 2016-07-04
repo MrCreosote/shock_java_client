@@ -680,13 +680,11 @@ public class BasicShockClient {
 			if (format != null && !format.isEmpty()) {
 				mpeb.addTextBody("format", format);
 			}
-			// causes an error for 0.8.23, makes node immutable
 			// doesn't work in 0.9.6 but doesn't break anything
-			// works in 0.9.12
-			// TODO Add when 0.8 drops support.
-//			if (filename != null && !filename.isEmpty()) {
-//				mpeb.addTextBody("file_name", filename);
-//			}
+			// works in 0.9.12+
+			if (filename != null && !filename.isEmpty()) {
+				mpeb.addTextBody("file_name", filename);
+			}
 			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}

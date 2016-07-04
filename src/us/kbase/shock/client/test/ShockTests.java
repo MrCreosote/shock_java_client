@@ -75,7 +75,7 @@ public class ShockTests {
 	private static ShockController SHOCK;
 	
 	private static Version VERSION;
-	private final static String SHOCK_V0_8 = ">=0.8 & < 0.9";
+	private final static String LT0_9_12 = "< 0.9.12";
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -585,9 +585,10 @@ public class ShockTests {
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
-		//TODO restore when dropping support for 0.8.23, doesn't work on 0.9.6 but works on 0.9.12
-//		assertThat("filename correct", sn.getFileInformation().getName(),
-//				is(filename));
+		if (!VERSION.satisfies(LT0_9_12)) { // might work for earlier versions, haven't tested.
+			assertThat("filename correct", sn.getFileInformation().getName(),
+					is(filename));
+		}
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
 		System.out.println("ID " + id + " Verifying " + filesize + "b file via outputstream... ");
 
@@ -1131,17 +1132,10 @@ public class ShockTests {
 		
 		assertThat("username correct", retacl.getOwner().getUsername(),
 				is(USER2_SID.getUsername()));
-		if (!VERSION.satisfies(SHOCK_V0_8)) {
-			assertThat("username correct", retacl.getOwner().getUsername(),
-					is(USER2.getUserId()));
-		}
+		assertThat("username correct", retacl.getOwner().getUsername(),
+				is(USER2.getUserId()));
 		assertThat("user id correct", retacl.getOwner().getID(),
 				is(USER2_SID.getID()));
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			//you can own a shock node but not be able to read it
-			BSC2.addToNodeAcl(sn.getId(), Arrays.asList(USER2.getUserId()),
-					ShockACLType.READ);
-		}
 		ShockNode sn2 = BSC2.getNode(sn.getId());
 		retacl = sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()),
 				ShockACLType.OWNER);
@@ -1196,58 +1190,40 @@ public class ShockTests {
 		
 		String failAddErr =
 				"Users that are not node owners can only delete themselves from ACLs.";
-		//TODO this needs to be a lot smarter. But for now...
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			failAddErr = "Only the node owner can edit/view node ACL's";
-		}
-		
 		failAddAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL,
 				new ShockIllegalShareException(400, failAddErr));
 		failAddAcl(sn2, Arrays.asList(USER2.getUserId()), ShockACLType.ALL,
 				new ShockIllegalShareException(400, failAddErr));
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			failRemoveAcl(BSC2, sn.getId(), Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL,
-					new ShockIllegalShareException(400, failAddErr));
-			failRemoveAcl(sn2, Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL,
-					new ShockIllegalShareException(400, failAddErr));
-		} else {
-			// test removing self from ACLs
-			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL);
-			for (ShockACLType acltype: singleAcls) {
-				ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
-						Arrays.asList(USER2.getUserId()), acltype);
-				assertThat("removed user from " + acltype.getType() + " acl",
-						getAcls(newacl, acltype),
-						is(Arrays.asList(USER1_SID)));
-				assertThat("removed user from " + acltype.getType() + " acl",
-						getAcls(BSC1, sn.getId(), acltype),
-						is(Arrays.asList(USER1_SID)));
-			}
-			sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
-					ShockACLType.ALL);
+
+		// test removing self from ACLs
+		sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL);
+		for (ShockACLType acltype: singleAcls) {
 			ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
-					Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
-			for (ShockACLType acltype: singleAcls) {
-				assertThat("removed user from " + acltype.getType() + " acl",
-						getAcls(newacl, acltype),
-						is(Arrays.asList(USER1_SID)));
-			}
+					Arrays.asList(USER2.getUserId()), acltype);
+			assertThat("removed user from " + acltype.getType() + " acl",
+					getAcls(newacl, acltype),
+					is(Arrays.asList(USER1_SID)));
+			assertThat("removed user from " + acltype.getType() + " acl",
+					getAcls(BSC1, sn.getId(), acltype),
+					is(Arrays.asList(USER1_SID)));
+		}
+		sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
+				ShockACLType.ALL);
+		ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
+				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		for (ShockACLType acltype: singleAcls) {
+			assertThat("removed user from " + acltype.getType() + " acl",
+					getAcls(newacl, acltype),
+					is(Arrays.asList(USER1_SID)));
 		}
 		
 		ShockNodeId id = sn.getId();
 		sn.delete();
-		ShockHttpException ex = new ShockNoNodeException(
-				404, "Node not found");
-		if (VERSION.satisfies(SHOCK_V0_8)) {
-			ex = new ShockHttpException(
-					500, "Err@node_Read:LoadNode: not found");
-		}
 		failAddAcl(BSC1, id, Arrays.asList(USER2.getUserId()),
-				ShockACLType.ALL, ex);
+				ShockACLType.ALL, new ShockNoNodeException(
+						404, "Node not found"));
 		
 	}
 	
