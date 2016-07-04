@@ -495,6 +495,29 @@ public class ShockTests {
 		/* test reading files one byte at a time, which is not exercised by
 		 * the other tests.
 		 */
+		
+		// won't get new chunk
+		ShockNode sn = writeFileToNode(null, "aaaaaaaaaa", 4999999,
+				"abcdefghij", "foo", "UTF-8", 1);
+		InputStream is = sn.getFile();
+		byte[] b = new byte[49999990];
+		is.read(b);
+		int offset = 97; //a in ascii
+		for (int i = 0; i < 10; i++) {
+			assertThat("incorrect read", is.read(), is(i + offset));
+		}
+		assertThat("incorrect read", is.read(), is(-1));
+		
+		// will get new 1 byte chunk
+		sn = writeFileToNode(null, "aaaaaaaaaa", 4999999,
+				"abcdefghijk", "foo", "UTF-8", 1);
+		is = sn.getFile();
+		b = new byte[49999990];
+		is.read(b);
+		for (int i = 0; i < 11; i++) {
+			assertThat("incorrect read", is.read(), is(i + offset));
+		}
+		assertThat("incorrect read", is.read(), is(-1));
 	}
 	
 	@Test

@@ -494,7 +494,6 @@ public class BasicShockClient {
 			}
 		}
 
-		//TODO NOW TEST all
 		@Override
 		public int read() throws IOException {
 			if (chunk == null) {
