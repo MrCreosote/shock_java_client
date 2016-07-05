@@ -470,7 +470,7 @@ public class BasicShockClient {
 					getDownloadURLPrefix());
 			getNextChunk(); // must be at least one
 		}
-		
+		//TODO add close() method, throw exception on read if closed
 		private void getNextChunk() throws TokenExpiredException,
 				IOException, ShockHttpException {
 			if (chunkCount >= chunks) {
