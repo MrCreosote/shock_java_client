@@ -29,6 +29,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author gaprice@lbl.gov
  *
  */
+
+// TODO just ignore all unknown - do this for all classes. 
 // Don't need these and they're undocumented so ignore for now.
 // last modified is a particular pain since null is represented as '-' so you
 // can't just deserialize to a Date
