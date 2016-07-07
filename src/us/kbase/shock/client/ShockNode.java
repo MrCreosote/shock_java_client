@@ -30,13 +30,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *
  */
 
-// TODO just ignore all unknown - do this for all classes. 
 // Don't need these and they're undocumented so ignore for now.
 // last modified is a particular pain since null is represented as '-' so you
 // can't just deserialize to a Date
-@JsonIgnoreProperties({"relatives", "type", "indexes", "tags", "linkages",
-	"linkage", "expiration", "parts", "created_on", "last_modified", "public",
-	"version_parts"})
+//@JsonIgnoreProperties({"relatives", "type", "indexes", "tags", "linkages",
+//	"linkage", "expiration", "parts", "created_on", "last_modified", "public",
+//	"version_parts"}) - as of 7/7/16. Might be more now.
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ShockNode extends ShockData {
 
 	private Map<String, Object> attributes;
