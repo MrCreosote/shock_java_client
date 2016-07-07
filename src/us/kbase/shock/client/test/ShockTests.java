@@ -75,7 +75,6 @@ public class ShockTests {
 	private static ShockController SHOCK;
 	
 	private static Version VERSION;
-	private final static String LT0_9_12 = "< 0.9.12";
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -161,14 +160,14 @@ public class ShockTests {
 		AuthToken exptok = new AuthToken(USER2.getTokenString(), 0);
 		//account for clockskew
 		long issued = exptok.getIssueDate().getTime();
-		long sleep = Math.max(issued - new Date().getTime(), 1000);
-		//TODO remove when this test works consistently, still fails occasionally
+		long now = new Date().getTime();
+		long sleep = Math.max(issued - now, 1000);
 		System.out.println("setExpiredToken");
 		System.out.println("issued: " + issued);
-		System.out.println("now: " + new Date().getTime());
-		System.out.println("sleep: " + sleep);
+		System.out.println("now: " + now);
+		System.out.println("sleep: " + (sleep + 5));
 		
-		Thread.sleep(sleep);
+		Thread.sleep(sleep + 5);
 		try {
 			BSC2.updateToken(exptok);
 			fail("accepted expired token on update");
@@ -178,12 +177,22 @@ public class ShockTests {
 	@Test
 	public void setOldToken() throws Exception {
 		AuthToken orig = USER2.getToken();
-		AuthToken exptok = new AuthToken(orig.toString(), Math.max(
-				(new Date().getTime() - orig.getIssueDate().getTime())/1000, 0)
-				+ 1);
-		BSC2.updateToken(exptok);
+		long issued = orig.getIssueDate().getTime();
+		long now = new Date().getTime();
+		long newexpires = Math.max((now - issued)/1000, 0) + 1;
+		//account for clockskew
+		long sleep = Math.max(issued - now, 0);
+		System.out.println("setOldToken");
+		System.out.println("issued: " + issued);
+		System.out.println("now:    " + now);
+		System.out.println("sleep: " + sleep);
+		System.out.println("new expires: " + newexpires);
+		Thread.sleep(sleep);
+		// authtoken takes seconds as input
+		AuthToken exptok = new AuthToken(orig.toString(), newexpires);
+		BSC2.updateToken(exptok); // will throw error if expired
 		Thread.sleep(2000);
-		assertTrue("token is expired", BSC2.isTokenExpired());
+		assertTrue("expected token to be expired", BSC2.isTokenExpired());
 		try {
 			BSC2.addNode();
 			fail("Added node with expired token");
@@ -577,16 +586,16 @@ public class ShockTests {
 		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "b", null, 3);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", "", 4);
-		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", null, 4);
+		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "myfile", "", 4);
+		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + "j", "myfile", null, 4);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites * 2, sbs2 + ch2, "filename", "UTF-8", 5);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites * 2, sbs2 + ch2, "filename", "UTF-8", 5);
+		sn = writeFileToNode(null, sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "filename", "ASCII", 6);
-		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "filename", "ASCII", 6);
+		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
+		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
 		sn.delete();
 	}
 	
@@ -600,10 +609,8 @@ public class ShockTests {
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
-		if (!VERSION.satisfies(LT0_9_12)) { // might work for earlier versions, haven't tested.
-			assertThat("filename correct", sn.getFileInformation().getName(),
-					is(filename));
-		}
+		assertThat("filename correct", sn.getFileInformation().getName(),
+				is(filename));
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
 		System.out.println("ID " + id + " Verifying " + filesize + "b file via outputstream... ");
 

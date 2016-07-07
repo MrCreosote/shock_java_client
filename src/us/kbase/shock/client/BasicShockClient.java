@@ -656,7 +656,6 @@ public class BasicShockClient {
 						ContentType.APPLICATION_JSON, ATTRIBFILE);
 			}
 			if (file != null) {
-				//TODO test filename works
 				mpeb.addBinaryBody("upload", file, ContentType.DEFAULT_BINARY,
 						filename);
 			}
@@ -695,9 +694,6 @@ public class BasicShockClient {
 			if (format != null && !format.isEmpty()) {
 				mpeb.addTextBody("format", format);
 			}
-			// doesn't work in 0.9.6 but doesn't break anything
-			// works in 0.9.12+
-			mpeb.addTextBody("file_name", filename);
 			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}
@@ -720,7 +716,7 @@ public class BasicShockClient {
 			final HttpPut htp = new HttpPut(targeturl);
 			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
 			mpeb.addTextBody("parts", "close");
-			//TODO set filename here & test with 0.9.6
+			mpeb.addTextBody("file_name", filename);
 			htp.setEntity(mpeb.build());
 			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		}
