@@ -189,7 +189,6 @@ Build:
 Known issues
 ------------
 
-- The filename is not set consistently with older Shock versions.
 - If a client is created such that it trusts self-signed certificates, all
   future clients will also trust all SSCs regardless of the constructor
   arguments. Similarly, creation of a standard client means that any new

@@ -1,3 +1,14 @@
+VERSION: 0.0.13 (Released 7/7/2016)
+-----------------------------------------
+NEW FEATURES:
+- TBD
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- Setting the filename in the addNode() methods will now work for supported
+  Shock versions (0.9.6 and up).
+- The input stream returned by getFile()'s close method now prevents further
+  reads and releases any data cached in memory for garbage collection.
+
 VERSION: 0.0.12 (Released 7/3/2016)
 -----------------------------------------
 
