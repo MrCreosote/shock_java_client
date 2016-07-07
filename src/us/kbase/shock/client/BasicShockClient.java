@@ -462,6 +462,7 @@ public class BasicShockClient {
 		private int chunkCount = 0;
 		private byte[] chunk;
 		private int pos = 0;
+		private boolean closed = false;
 		
 		public ShockFileInputStream(final ShockNode sn)
 				throws TokenExpiredException, ShockHttpException, IOException {
@@ -470,7 +471,6 @@ public class BasicShockClient {
 					getDownloadURLPrefix());
 			getNextChunk(); // must be at least one
 		}
-		//TODO add close() method, throw exception on read if closed
 		private void getNextChunk() throws TokenExpiredException,
 				IOException, ShockHttpException {
 			if (chunkCount >= chunks) {
@@ -496,6 +496,9 @@ public class BasicShockClient {
 
 		@Override
 		public int read() throws IOException {
+			if (closed) {
+				throw new IOException("Stream is closed.");
+			}
 			if (chunk == null) {
 				return -1;
 			}
@@ -518,6 +521,9 @@ public class BasicShockClient {
 		
 		@Override
 		public int read(byte b[], int off, int len) throws IOException {
+			if (closed) {
+				throw new IOException("Stream is closed.");
+			}
 			if (b == null) {
 				throw new NullPointerException();
 			} else if (off < 0 || len < 0 || len > b.length - off) {
@@ -537,6 +543,12 @@ public class BasicShockClient {
 				pos += len;
 				return len;
 			}
+		}
+		
+		@Override
+		public void close() {
+			closed = true;
+			chunk = null;
 		}
 	}
 	

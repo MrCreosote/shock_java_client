@@ -199,6 +199,7 @@ public class ShockTests {
 		BSC1.updateToken(null);
 		try {
 			BSC1.addNode();
+			fail("Added node with no token");
 		} catch (ShockAuthorizationException sae) {
 			assertThat("correct exception message", sae.getLocalizedMessage(),
 					is("No Authorization"));
@@ -467,6 +468,9 @@ public class ShockTests {
 		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("wee!"));
 		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
 		
+		is = sn.getFile();
+		is.close();
+		failRead(is, b, 0, 1, new IOException("Stream is closed."));
 		
 	}
 	
@@ -474,6 +478,7 @@ public class ShockTests {
 			Exception exp) {
 		try {
 			is.read(b, off, len);
+			fail("read successfully but expected fail");
 		} catch (Exception got) {
 			assertExceptionCorrect(got, exp);
 		}
@@ -518,6 +523,16 @@ public class ShockTests {
 			assertThat("incorrect read", is.read(), is(i + offset));
 		}
 		assertThat("incorrect read", is.read(), is(-1));
+		
+		is = sn.getFile();
+		is.close();
+		try {
+			is.read();
+			fail("Read successfully but expected fail");
+		} catch (IOException e) {
+			assertThat("incorrect exception message", e.getMessage(),
+					is("Stream is closed."));
+		}
 	}
 	
 	@Test
@@ -890,12 +905,14 @@ public class ShockTests {
 		BSC1.deleteNode(sn.getId());
 		try {
 			BSC1.getFile(sn, new ByteArrayOutputStream());
+			fail("got deleted file");
 		} catch (ShockNoNodeException snne) {
 			assertThat("correct exception message", snne.getLocalizedMessage(),
 					is("Node not found"));
 		}
 		try {
 			BSC1.getFile(sn);
+			fail("got deleted file");
 		} catch (ShockNoNodeException snne) {
 			assertThat("correct exception message", snne.getLocalizedMessage(),
 					is("Node not found"));
