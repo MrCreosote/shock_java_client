@@ -75,7 +75,6 @@ public class ShockTests {
 	private static ShockController SHOCK;
 	
 	private static Version VERSION;
-	private final static String LT0_9_12 = "< 0.9.12";
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -161,14 +160,14 @@ public class ShockTests {
 		AuthToken exptok = new AuthToken(USER2.getTokenString(), 0);
 		//account for clockskew
 		long issued = exptok.getIssueDate().getTime();
-		long sleep = Math.max(issued - new Date().getTime(), 1000);
-		//TODO remove when this test works consistently, still fails occasionally
+		long now = new Date().getTime();
+		long sleep = Math.max(issued - now, 1000);
 		System.out.println("setExpiredToken");
 		System.out.println("issued: " + issued);
-		System.out.println("now: " + new Date().getTime());
-		System.out.println("sleep: " + sleep);
+		System.out.println("now: " + now);
+		System.out.println("sleep: " + (sleep + 5));
 		
-		Thread.sleep(sleep);
+		Thread.sleep(sleep + 5);
 		try {
 			BSC2.updateToken(exptok);
 			fail("accepted expired token on update");
@@ -178,12 +177,22 @@ public class ShockTests {
 	@Test
 	public void setOldToken() throws Exception {
 		AuthToken orig = USER2.getToken();
-		AuthToken exptok = new AuthToken(orig.toString(), Math.max(
-				(new Date().getTime() - orig.getIssueDate().getTime())/1000, 0)
-				+ 1);
-		BSC2.updateToken(exptok);
+		long issued = orig.getIssueDate().getTime();
+		long now = new Date().getTime();
+		long newexpires = Math.max((now - issued)/1000, 0) + 1;
+		//account for clockskew
+		long sleep = Math.max(issued - now, 0);
+		System.out.println("setOldToken");
+		System.out.println("issued: " + issued);
+		System.out.println("now:    " + now);
+		System.out.println("sleep: " + sleep);
+		System.out.println("new expires: " + newexpires);
+		Thread.sleep(sleep);
+		// authtoken takes seconds as input
+		AuthToken exptok = new AuthToken(orig.toString(), newexpires);
+		BSC2.updateToken(exptok); // will throw error if expired
 		Thread.sleep(2000);
-		assertTrue("token is expired", BSC2.isTokenExpired());
+		assertTrue("expected token to be expired", BSC2.isTokenExpired());
 		try {
 			BSC2.addNode();
 			fail("Added node with expired token");
@@ -199,6 +208,7 @@ public class ShockTests {
 		BSC1.updateToken(null);
 		try {
 			BSC1.addNode();
+			fail("Added node with no token");
 		} catch (ShockAuthorizationException sae) {
 			assertThat("correct exception message", sae.getLocalizedMessage(),
 					is("No Authorization"));
@@ -325,6 +335,10 @@ public class ShockTests {
 		} catch (ShockNodeDeletedException snde) {}
 		try {
 			sn.getVersion();
+			fail("Method ran on deleted node");
+		} catch (ShockNodeDeletedException snde) {}
+		try {
+			sn.setPubliclyReadable(true);
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
 	}
@@ -467,6 +481,9 @@ public class ShockTests {
 		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("wee!"));
 		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
 		
+		is = sn.getFile();
+		is.close();
+		failRead(is, b, 0, 1, new IOException("Stream is closed."));
 		
 	}
 	
@@ -474,6 +491,7 @@ public class ShockTests {
 			Exception exp) {
 		try {
 			is.read(b, off, len);
+			fail("read successfully but expected fail");
 		} catch (Exception got) {
 			assertExceptionCorrect(got, exp);
 		}
@@ -518,6 +536,16 @@ public class ShockTests {
 			assertThat("incorrect read", is.read(), is(i + offset));
 		}
 		assertThat("incorrect read", is.read(), is(-1));
+		
+		is = sn.getFile();
+		is.close();
+		try {
+			is.read();
+			fail("Read successfully but expected fail");
+		} catch (IOException e) {
+			assertThat("incorrect exception message", e.getMessage(),
+					is("Stream is closed."));
+		}
 	}
 	
 	@Test
@@ -562,16 +590,16 @@ public class ShockTests {
 		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "b", null, 3);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", "", 4);
-		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + "j", "filename", null, 4);
+		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "myfile", "", 4);
+		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + "j", "myfile", null, 4);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites * 2, sbs2 + ch2, "filename", "UTF-8", 5);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites * 2, sbs2 + ch2, "filename", "UTF-8", 5);
+		sn = writeFileToNode(null, sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
+		verifyStreamedNode(sn, null, sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "filename", "ASCII", 6);
-		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "filename", "ASCII", 6);
+		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
+		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
 		sn.delete();
 	}
 	
@@ -585,10 +613,8 @@ public class ShockTests {
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
-		if (!VERSION.satisfies(LT0_9_12)) { // might work for earlier versions, haven't tested.
-			assertThat("filename correct", sn.getFileInformation().getName(),
-					is(filename));
-		}
+		assertThat("filename correct", sn.getFileInformation().getName(),
+				is(filename));
 		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
 		System.out.println("ID " + id + " Verifying " + filesize + "b file via outputstream... ");
 
@@ -890,12 +916,14 @@ public class ShockTests {
 		BSC1.deleteNode(sn.getId());
 		try {
 			BSC1.getFile(sn, new ByteArrayOutputStream());
+			fail("got deleted file");
 		} catch (ShockNoNodeException snne) {
 			assertThat("correct exception message", snne.getLocalizedMessage(),
 					is("Node not found"));
 		}
 		try {
 			BSC1.getFile(sn);
+			fail("got deleted file");
 		} catch (ShockNoNodeException snne) {
 			assertThat("correct exception message", snne.getLocalizedMessage(),
 					is("Node not found"));
@@ -986,39 +1014,28 @@ public class ShockTests {
 		}
 	}
 	
-	@Test
-	public void generalAcls() throws Exception {
-		ShockNode sn = BSC1.addNode();
-		assertTrue("acl access methods produce different acls",
-				sn.getACLs().equals(BSC1.getACLs(sn.getId())));
-		ShockACL acl1 = sn.getACLs(ShockACLType.OWNER);
-		ShockACL acl2 = BSC1.getACLs(sn.getId(), ShockACLType.OWNER);
-		assertTrue("acl owner access methods produce different acls",
-				acl1.equals(acl2));
-		assertTrue("owners for same node are different",
-				acl1.getOwner().equals(acl1.getOwner()));
-		assertTrue("same acls aren't equal", acl1.equals(acl1));
-		assertFalse("acl equal to different type",
-				acl1.equals(ShockACLType.OWNER));
-		
-		List<ShockACLType> acls = Arrays.asList(ShockACLType.ALL,
-				ShockACLType.READ, ShockACLType.WRITE, ShockACLType.DELETE);
-		for (ShockACLType acl: acls) {
-			ShockACL sacl = sn.getACLs(acl);
-			assertTrue(String.format("%s subset of acls are different", acl.getType()),
-					sacl.equals(BSC1.getACLs(sn.getId(), acl)));
-			checkListLengthIfNotNull(sacl.getRead(), 1);
-			checkListLengthIfNotNull(sacl.getWrite(), 1);
-			checkListLengthIfNotNull(sacl.getDelete(), 1);
+	private void failSetPubliclyReadable(
+			final ShockNode node,
+			final boolean read,
+			final Exception exp) throws Exception {
+		try {
+			node.setPubliclyReadable(read);
+			fail("expected exception");
+		} catch (Exception got) {
+			assertExceptionCorrect(got, exp);
 		}
-		sn.delete();
 	}
 	
-	private void checkListLengthIfNotNull(@SuppressWarnings("rawtypes") List list,
-			int length) {
-		if (list != null) {
-			assertTrue(String.format("only %d user in new acl", length),
-					list.size() == length);
+	private void failSetPubliclyReadable(
+			final BasicShockClient cli,
+			final ShockNodeId id,
+			final boolean read,
+			final Exception exp) throws Exception {
+		try {
+			cli.setPubliclyReadable(id, read);
+			fail("expected exception");
+		} catch (Exception got) {
+			assertExceptionCorrect(got, exp);
 		}
 	}
 	
@@ -1027,9 +1044,29 @@ public class ShockTests {
 		ShockNode sn = setUpNodeAndCheckAuth(BSC1, BSC2);
 		ShockACL acls = sn.getACLs();
 		assertThat("user1 is owner", acls.getOwner(), is(USER1_SID));
-		assertThat("only owner in read acl", acls.getRead(), is(Arrays.asList(USER1_SID)));
-		assertThat("only owner in write acl", acls.getWrite(), is(Arrays.asList(USER1_SID)));
-		assertThat("only owner in delete acl", acls.getDelete(), is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in read acl", acls.getRead(),
+				is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in write acl", acls.getWrite(),
+				is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in delete acl", acls.getDelete(),
+				is(Arrays.asList(USER1_SID)));
+		assertThat("node is private", acls.isPublicallyReadable(), is(false));
+		failSetPubliclyReadable(BSC1, null, true,
+				new NullPointerException("id"));
+		ShockACL pacl = BSC1.setPubliclyReadable(sn.getId(), true);
+		assertThat("node set readable", pacl.isPublicallyReadable(), is(true));
+		assertThat("node set readable", BSC1.getACLs(sn.getId())
+				.isPublicallyReadable(), is(true));
+		assertThat("node set readable", sn.getACLs().isPublicallyReadable(),
+				is(true));
+		
+		pacl = sn.setPubliclyReadable(false);
+		assertThat("node set private", pacl.isPublicallyReadable(), is(false));
+		assertThat("node set private", BSC1.getACLs(sn.getId())
+				.isPublicallyReadable(), is(false));
+		assertThat("node set private", sn.getACLs().isPublicallyReadable(),
+				is(false));
+		
 		List<ShockACLType> singleAcls = Arrays.asList(ShockACLType.READ,
 				ShockACLType.WRITE, ShockACLType.DELETE);
 		for (ShockACLType aclType: singleAcls) {
@@ -1097,6 +1134,8 @@ public class ShockTests {
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 			
 			retacl = BSC1.removeFromNodeAcl(sn.getId(),
 					Arrays.asList(USER2.getUserId()), aclType);
@@ -1104,18 +1143,24 @@ public class ShockTests {
 					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 			
 			retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
 			assertThat("added user to " + acl, getAcls(retacl, aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 			
 			retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
 			assertThat("removed user from " + acl, getAcls(retacl, aclType),
 					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 		}
 		
 		
@@ -1143,6 +1188,8 @@ public class ShockTests {
 				is(USER2_SID));
 		assertThat("added user to " + owneracl,
 				BSC2.getACLs(sn.getId()).getOwner(), is(USER2_SID));
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		
 		assertThat("username correct", retacl.getOwner().getUsername(),
 				is(USER2_SID.getUsername()));
@@ -1153,6 +1200,8 @@ public class ShockTests {
 		ShockNode sn2 = BSC2.getNode(sn.getId());
 		retacl = sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()),
 				ShockACLType.OWNER);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		assertThat("added user to " + owneracl, retacl.getOwner(),
 				is(USER1_SID));
 		assertThat("added user to " + owneracl, sn.getACLs().getOwner(),
@@ -1163,6 +1212,8 @@ public class ShockTests {
 		
 		retacl = BSC1.addToNodeAcl(sn.getId(),
 				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1173,6 +1224,8 @@ public class ShockTests {
 		}
 		retacl = BSC1.removeFromNodeAcl(sn.getId(),
 				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1183,6 +1236,8 @@ public class ShockTests {
 		}
 		retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1193,6 +1248,8 @@ public class ShockTests {
 		}
 		retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1209,7 +1266,11 @@ public class ShockTests {
 				new ShockIllegalShareException(400, failAddErr));
 		failAddAcl(sn2, Arrays.asList(USER2.getUserId()), ShockACLType.ALL,
 				new ShockIllegalShareException(400, failAddErr));
-
+		failSetPubliclyReadable(BSC2, sn.getId(), true,
+				new ShockIllegalShareException(400, failAddErr));
+		failSetPubliclyReadable(sn2, true,
+				new ShockIllegalShareException(400, failAddErr));
+		
 		// test removing self from ACLs
 		sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL);
@@ -1238,6 +1299,8 @@ public class ShockTests {
 		failAddAcl(BSC1, id, Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL, new ShockNoNodeException(
 						404, "Node not found"));
+		failSetPubliclyReadable(BSC1, id, false, new ShockNoNodeException(
+				404, "Node not found"));
 		
 	}
 	

@@ -13,7 +13,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author gaprice@lbl.gov
  *
  */
-@JsonIgnoreProperties({"virtual", "virtual_parts", "created_on"})
+// as of 7/7/16 - may be more now
+//@JsonIgnoreProperties({"virtual", "virtual_parts", "created_on"})
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ShockFileInformation {
 	
 	private ShockFileInformation(){}
