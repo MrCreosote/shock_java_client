@@ -103,21 +103,19 @@ public class ShockNode extends ShockData {
 		return client.getACLs(getId());
 	}
 	
-	/**
-	 * Proxy for {@link BasicShockClient#getACLs(ShockNodeId, ShockACLType)
-	 * getACLs()}.
-	 * Returns the requested access control list (ACL) for the node.
-	 * @param acl the type of ACL to retrive from shock.
-	 * @return an ACL.
-	 * @throws ShockHttpException if the shock server cannot retrieve the ACL.
+	/** Proxy for {@link BasicShockClient#setPubliclyReadable(ShockNodeId,
+	 * boolean)}.
+	 * @param publicRead true to set publicly readable, false to set private.
+	 * @return the new ACLs.
+	 * @throws ShockHttpException if the ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
-	public ShockACL getACLs(final ShockACLType acl) throws ShockHttpException,
-			IOException, TokenExpiredException {
+	public ShockACL setPubliclyReadable(final boolean publicRead)
+			throws TokenExpiredException, ShockHttpException, IOException {
 		checkDeleted();
-		return client.getACLs(getId(), acl);
+		return client.setPubliclyReadable(getId(), publicRead);
 	}
 	
 	/**
@@ -127,7 +125,7 @@ public class ShockNode extends ShockData {
 	 * @param users the users to which permissions shall be granted.
 	 * @param aclType the ACL(s) to which the users shall be added.
 	 * @return the new ACL.
-	 * @throws ShockHttpException if the read ACL could not be modified.
+	 * @throws ShockHttpException if the ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws TokenExpiredException if the client's token has expired.
 	 */

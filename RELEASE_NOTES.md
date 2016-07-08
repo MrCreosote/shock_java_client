@@ -1,7 +1,12 @@
 VERSION: 0.0.13 (Released 7/7/2016)
 -----------------------------------------
+
+BACKWARDS INCOMPATIBILIES:
+- removed the getACLs(ShockNodeId, ShockAclType) method. Use
+  getACLs(ShockNodeId).
+
 NEW FEATURES:
-- TBD
+- Added methods for setting and getting a node's public readability.
 
 UPDATED FEATURES / MAJOR BUG FIXES:
 - Setting the filename in the addNode() methods will now work for supported

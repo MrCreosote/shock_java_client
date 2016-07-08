@@ -337,6 +337,10 @@ public class ShockTests {
 			sn.getVersion();
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
+		try {
+			sn.setPubliclyReadable(true);
+			fail("Method ran on deleted node");
+		} catch (ShockNodeDeletedException snde) {}
 	}
 	
 	private Map<String,Object> makeSomeAttribs(String astring) {
@@ -1010,39 +1014,28 @@ public class ShockTests {
 		}
 	}
 	
-	@Test
-	public void generalAcls() throws Exception {
-		ShockNode sn = BSC1.addNode();
-		assertTrue("acl access methods produce different acls",
-				sn.getACLs().equals(BSC1.getACLs(sn.getId())));
-		ShockACL acl1 = sn.getACLs(ShockACLType.OWNER);
-		ShockACL acl2 = BSC1.getACLs(sn.getId(), ShockACLType.OWNER);
-		assertTrue("acl owner access methods produce different acls",
-				acl1.equals(acl2));
-		assertTrue("owners for same node are different",
-				acl1.getOwner().equals(acl1.getOwner()));
-		assertTrue("same acls aren't equal", acl1.equals(acl1));
-		assertFalse("acl equal to different type",
-				acl1.equals(ShockACLType.OWNER));
-		
-		List<ShockACLType> acls = Arrays.asList(ShockACLType.ALL,
-				ShockACLType.READ, ShockACLType.WRITE, ShockACLType.DELETE);
-		for (ShockACLType acl: acls) {
-			ShockACL sacl = sn.getACLs(acl);
-			assertTrue(String.format("%s subset of acls are different", acl.getType()),
-					sacl.equals(BSC1.getACLs(sn.getId(), acl)));
-			checkListLengthIfNotNull(sacl.getRead(), 1);
-			checkListLengthIfNotNull(sacl.getWrite(), 1);
-			checkListLengthIfNotNull(sacl.getDelete(), 1);
+	private void failSetPubliclyReadable(
+			final ShockNode node,
+			final boolean read,
+			final Exception exp) throws Exception {
+		try {
+			node.setPubliclyReadable(read);
+			fail("expected exception");
+		} catch (Exception got) {
+			assertExceptionCorrect(got, exp);
 		}
-		sn.delete();
 	}
 	
-	private void checkListLengthIfNotNull(@SuppressWarnings("rawtypes") List list,
-			int length) {
-		if (list != null) {
-			assertTrue(String.format("only %d user in new acl", length),
-					list.size() == length);
+	private void failSetPubliclyReadable(
+			final BasicShockClient cli,
+			final ShockNodeId id,
+			final boolean read,
+			final Exception exp) throws Exception {
+		try {
+			cli.setPubliclyReadable(id, read);
+			fail("expected exception");
+		} catch (Exception got) {
+			assertExceptionCorrect(got, exp);
 		}
 	}
 	
@@ -1051,9 +1044,29 @@ public class ShockTests {
 		ShockNode sn = setUpNodeAndCheckAuth(BSC1, BSC2);
 		ShockACL acls = sn.getACLs();
 		assertThat("user1 is owner", acls.getOwner(), is(USER1_SID));
-		assertThat("only owner in read acl", acls.getRead(), is(Arrays.asList(USER1_SID)));
-		assertThat("only owner in write acl", acls.getWrite(), is(Arrays.asList(USER1_SID)));
-		assertThat("only owner in delete acl", acls.getDelete(), is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in read acl", acls.getRead(),
+				is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in write acl", acls.getWrite(),
+				is(Arrays.asList(USER1_SID)));
+		assertThat("only owner in delete acl", acls.getDelete(),
+				is(Arrays.asList(USER1_SID)));
+		assertThat("node is private", acls.isPublicallyReadable(), is(false));
+		failSetPubliclyReadable(BSC1, null, true,
+				new NullPointerException("id"));
+		ShockACL pacl = BSC1.setPubliclyReadable(sn.getId(), true);
+		assertThat("node set readable", pacl.isPublicallyReadable(), is(true));
+		assertThat("node set readable", BSC1.getACLs(sn.getId())
+				.isPublicallyReadable(), is(true));
+		assertThat("node set readable", sn.getACLs().isPublicallyReadable(),
+				is(true));
+		
+		pacl = sn.setPubliclyReadable(false);
+		assertThat("node set private", pacl.isPublicallyReadable(), is(false));
+		assertThat("node set private", BSC1.getACLs(sn.getId())
+				.isPublicallyReadable(), is(false));
+		assertThat("node set private", sn.getACLs().isPublicallyReadable(),
+				is(false));
+		
 		List<ShockACLType> singleAcls = Arrays.asList(ShockACLType.READ,
 				ShockACLType.WRITE, ShockACLType.DELETE);
 		for (ShockACLType aclType: singleAcls) {
@@ -1121,6 +1134,8 @@ public class ShockTests {
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 			
 			retacl = BSC1.removeFromNodeAcl(sn.getId(),
 					Arrays.asList(USER2.getUserId()), aclType);
@@ -1128,18 +1143,24 @@ public class ShockTests {
 					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(BSC1, sn.getId(), aclType),
 					is(Arrays.asList(USER1_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 			
 			retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
 			assertThat("added user to " + acl, getAcls(retacl, aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
 			assertThat("added user to " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID, USER2_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 			
 			retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()), aclType);
 			assertThat("removed user from " + acl, getAcls(retacl, aclType),
 					is(Arrays.asList(USER1_SID)));
 			assertThat("removed user from " + acl, getAcls(sn, aclType),
 					is(Arrays.asList(USER1_SID)));
+			assertThat("node is private", retacl.isPublicallyReadable(),
+					is(false));
 		}
 		
 		
@@ -1167,6 +1188,8 @@ public class ShockTests {
 				is(USER2_SID));
 		assertThat("added user to " + owneracl,
 				BSC2.getACLs(sn.getId()).getOwner(), is(USER2_SID));
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		
 		assertThat("username correct", retacl.getOwner().getUsername(),
 				is(USER2_SID.getUsername()));
@@ -1177,6 +1200,8 @@ public class ShockTests {
 		ShockNode sn2 = BSC2.getNode(sn.getId());
 		retacl = sn2.addToNodeAcl(Arrays.asList(BSC1.getToken().getUserName()),
 				ShockACLType.OWNER);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		assertThat("added user to " + owneracl, retacl.getOwner(),
 				is(USER1_SID));
 		assertThat("added user to " + owneracl, sn.getACLs().getOwner(),
@@ -1187,6 +1212,8 @@ public class ShockTests {
 		
 		retacl = BSC1.addToNodeAcl(sn.getId(),
 				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1197,6 +1224,8 @@ public class ShockTests {
 		}
 		retacl = BSC1.removeFromNodeAcl(sn.getId(),
 				Arrays.asList(USER2.getUserId()), ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1207,6 +1236,8 @@ public class ShockTests {
 		}
 		retacl = sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("added user to " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1217,6 +1248,8 @@ public class ShockTests {
 		}
 		retacl = sn.removeFromNodeAcl(Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL);
+		assertThat("node is private", retacl.isPublicallyReadable(),
+				is(false));
 		for (ShockACLType aclType: singleAcls) {
 			assertThat("removed user from " + aclType.getType() + " acl",
 					getAcls(retacl, aclType),
@@ -1233,7 +1266,11 @@ public class ShockTests {
 				new ShockIllegalShareException(400, failAddErr));
 		failAddAcl(sn2, Arrays.asList(USER2.getUserId()), ShockACLType.ALL,
 				new ShockIllegalShareException(400, failAddErr));
-
+		failSetPubliclyReadable(BSC2, sn.getId(), true,
+				new ShockIllegalShareException(400, failAddErr));
+		failSetPubliclyReadable(sn2, true,
+				new ShockIllegalShareException(400, failAddErr));
+		
 		// test removing self from ACLs
 		sn.addToNodeAcl(Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL);
@@ -1262,6 +1299,8 @@ public class ShockTests {
 		failAddAcl(BSC1, id, Arrays.asList(USER2.getUserId()),
 				ShockACLType.ALL, new ShockNoNodeException(
 						404, "Node not found"));
+		failSetPubliclyReadable(BSC1, id, false, new ShockNoNodeException(
+				404, "Node not found"));
 		
 	}
 	

@@ -383,7 +383,7 @@ public class BasicShockClient {
 	/**
 	 * Get the file for this shock node.
 	 * @param sn the shock node from which to retrieve the file.
-	 * @param file the stream to which the file will be written.
+	 * @param os the stream to which the file will be written.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws ShockHttpException if the file could not be fetched from shock.
 	 * @throws TokenExpiredException if the client authorization token has
@@ -430,7 +430,7 @@ public class BasicShockClient {
 	/**
 	 * Equivalent to client.getFile(client.getNode(id))
 	 * @param id the ID of the shock node.
-	 * @returns an input stream containing the file.
+	 * @return an input stream containing the file.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws ShockHttpException if the file could not be fetched from shock.
 	 * @throws TokenExpiredException if the client authorization token has
@@ -444,7 +444,7 @@ public class BasicShockClient {
 	/** Get the file for this shock node. The input stream this function
 	 * returns is naturally buffered.
 	 * @param sn the shock node from which to retrieve the file.
-	 * @returns an input stream containing the file.
+	 * @return an input stream containing the file.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws ShockHttpException if the file could not be fetched from shock.
 	 * @throws TokenExpiredException if the client authorization token has
@@ -790,7 +790,6 @@ public class BasicShockClient {
 		return (ShockACL) processRequest(htd, ShockACLResponse.class);
 	}
 	
-	// look into sharing shock and awe client code
 	private URI checkACLArgsAndGenURI(
 			final ShockNodeId id,
 			final List<String> users,
@@ -817,40 +816,50 @@ public class BasicShockClient {
 		return targeturl;
 	}
 	
+	/** Set a node publicly readable.
+	 * @param id the ID of the node to set readable.
+	 * @param publicRead true to set publicly readable, false to set private.
+	 * @return the new ACLs.
+	 * @throws TokenExpiredException if the token is expired.
+	 * @throws ShockHttpException if a shock error occurs.
+	 * @throws IOException if an IO error occurs.
+	 */
+	public ShockACL setPubliclyReadable(
+			final ShockNodeId id,
+			final boolean publicRead)
+			throws TokenExpiredException, ShockHttpException, IOException {
+		if (id == null) {
+			throw new NullPointerException("id");
+		}
+		final URI targeturl = nodeurl.resolve(id.getId() +
+				// parameterize this if we support public write & delete,
+				// which seems like a bad idea to me
+				"/acl/public_read?verbosity=full");
+		final HttpRequestBase req;
+		if (publicRead) {
+			req = new HttpPut(targeturl);
+		} else {
+			req = new HttpDelete(targeturl);
+		}
+		return (ShockACL) processRequest(req, ShockACLResponse.class);
+	}
+	
 	/**
-	 * Retrieves all the access control lists (ACLs) from the shock server for
+	 * Retrieves the access control lists (ACLs) from the shock server for
 	 * a node. Note the object returned represents the shock node's state at
 	 * the time getACLs() was called and does not update further.
 	 * @param id the node to query.
 	 * @return the ACLs for the node.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws ShockHttpException if the node's access control lists could not be
-	 * retrieved.
+	 * @throws ShockHttpException if the node's access control lists could not
+	 * be retrieved.
 	 * @throws TokenExpiredException if the client authorization token has
 	 * expired.
 	 */
 	public ShockACL getACLs(final ShockNodeId id) throws IOException,
 			ShockHttpException, TokenExpiredException {
-		return getACLs(id, ShockACLType.ALL);
-	}
-	
-	/**
-	 * Retrieves a specific access control list (ACL) from the shock server for
-	 * a node. Note the object returned represents the shock node's state at
-	 * the time getACLs() was called and does not update further.
-	 * @param id the node to query.
-	 * @param acl the type of ACL to retrieve.
-	 * @return the ACL for the node.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws ShockHttpException if the node's access control list could not be
-	 * retrieved.
-	 * @throws TokenExpiredException if the client authorization token has
-	 * expired.
-	 */
-	public ShockACL getACLs(final ShockNodeId id, final ShockACLType acl) 
-			throws IOException, ShockHttpException, TokenExpiredException {
 		final URI targeturl = nodeurl.resolve(id.getId() +
-				acl.getUrlFragmentForAcl() + "?verbosity=full");
+				ShockACLType.ALL.getUrlFragmentForAcl() + "?verbosity=full");
 		final HttpGet htg = new HttpGet(targeturl);
 		return (ShockACL) processRequest(htg, ShockACLResponse.class);
 	}

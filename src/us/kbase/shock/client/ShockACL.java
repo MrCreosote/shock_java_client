@@ -25,7 +25,6 @@ public class ShockACL extends ShockData {
 	private List<ShockUserId> read;
 	private List<ShockUserId> write;
 	private List<ShockUserId> delete;
-	//may do something with this later. For now just for compatibility.
 	@JsonProperty("public")
 	private Map<String, Boolean> public_;
 	
@@ -67,6 +66,10 @@ public class ShockACL extends ShockData {
 	public List<ShockUserId> getDelete() {
 		if (delete == null) {return null;}
 		return new ArrayList<ShockUserId>(delete);
+	}
+	
+	public boolean isPublicallyReadable() {
+		return public_.get(ShockACLType.READ.getType());
 	}
 	
 	@Override
