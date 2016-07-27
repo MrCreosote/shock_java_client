@@ -15,7 +15,6 @@ import org.junit.Test;
 import us.kbase.auth.AuthException;
 import us.kbase.auth.AuthService;
 import us.kbase.auth.AuthUser;
-import us.kbase.auth.TokenExpiredException;
 import us.kbase.common.test.TestException;
 import us.kbase.common.test.controllers.mongo.MongoController;
 import us.kbase.common.test.controllers.shock.ShockController;
@@ -108,7 +107,7 @@ public class ShockTrustSSLTest {
 	}
 
 	private void addGetDeleteNodeBasic(BasicShockClient bsc)
-			throws IOException, ShockHttpException, TokenExpiredException,
+			throws IOException, ShockHttpException,
 			Exception {
 		ShockNode sn = bsc.addNode();
 		ShockNode snget = bsc.getNode(sn.getId());

@@ -6,7 +6,6 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 
-import us.kbase.auth.TokenExpiredException;
 import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
 
@@ -79,10 +78,8 @@ public class ShockNode extends ShockData {
 	 * exception after this method is called.
 	 * @throws ShockHttpException if the shock server couldn't delete the node.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
 	 */
-	public void delete() throws ShockHttpException, IOException,
-			TokenExpiredException {
+	public void delete() throws ShockHttpException, IOException {
 		client.deleteNode(getId());
 		client = null; //remove ref to client
 		deleted = true;
@@ -94,11 +91,9 @@ public class ShockNode extends ShockData {
 	 * @return the ACLs.
 	 * @throws ShockHttpException if the shock server cannot retrieve the ACLs.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
-	public ShockACL getACLs() throws ShockHttpException, IOException,
-			TokenExpiredException {
+	public ShockACL getACLs() throws ShockHttpException, IOException {
 		checkDeleted();
 		return client.getACLs(getId());
 	}
@@ -109,11 +104,10 @@ public class ShockNode extends ShockData {
 	 * @return the new ACLs.
 	 * @throws ShockHttpException if the ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
 	public ShockACL setPubliclyReadable(final boolean publicRead)
-			throws TokenExpiredException, ShockHttpException, IOException {
+			throws ShockHttpException, IOException {
 		checkDeleted();
 		return client.setPubliclyReadable(getId(), publicRead);
 	}
@@ -127,13 +121,12 @@ public class ShockNode extends ShockData {
 	 * @return the new ACL.
 	 * @throws ShockHttpException if the ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
 	public ShockACL addToNodeAcl(
 			final List<String> users,
 			final ShockACLType aclType)
-			throws ShockHttpException, IOException, TokenExpiredException {
+			throws ShockHttpException, IOException {
 		checkDeleted();
 		return client.addToNodeAcl(getId(), users, aclType);
 	}
@@ -147,13 +140,12 @@ public class ShockNode extends ShockData {
 	 * @return the new ACL.
 	 * @throws ShockHttpException if the read ACL could not be modified.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
 	public ShockACL removeFromNodeAcl(
 			final List<String> users,
 			final ShockACLType aclType)
-			throws ShockHttpException, IOException, TokenExpiredException {
+			throws ShockHttpException, IOException {
 		checkDeleted();
 		return client.removeFromNodeAcl(getId(), users, aclType);
 	}
@@ -165,11 +157,10 @@ public class ShockNode extends ShockData {
 	 * @param file the stream to which the file will be written.
 	 * @throws ShockHttpException if the file could not be retrieved from shock.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
 	public void getFile(final OutputStream file)
-			throws ShockHttpException, IOException, TokenExpiredException {
+			throws ShockHttpException, IOException {
 		checkDeleted();
 		client.getFile(this, file);
 	}
@@ -180,11 +171,9 @@ public class ShockNode extends ShockData {
 	 * @return an input stream containing the file.
 	 * @throws ShockHttpException if the file could not be retrieved from shock.
 	 * @throws IOException if an IO problem occurs.
-	 * @throws TokenExpiredException if the client's token has expired.
 	 */
 	@JsonIgnore
-	public InputStream getFile()
-			throws TokenExpiredException, ShockHttpException, IOException {
+	public InputStream getFile() throws ShockHttpException, IOException {
 		checkDeleted();
 		return client.getFile(this);
 	}

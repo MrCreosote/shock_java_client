@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,7 +41,6 @@ import us.kbase.auth.AuthException;
 import us.kbase.auth.AuthService;
 import us.kbase.auth.AuthToken;
 import us.kbase.auth.AuthUser;
-import us.kbase.auth.TokenExpiredException;
 import us.kbase.common.test.TestException;
 import us.kbase.common.test.controllers.mongo.MongoController;
 import us.kbase.common.test.controllers.shock.ShockController;
@@ -55,7 +53,6 @@ import us.kbase.shock.client.ShockUserId;
 import us.kbase.shock.client.ShockVersionStamp;
 import us.kbase.shock.client.exceptions.InvalidShockUrlException;
 import us.kbase.shock.client.exceptions.ShockAuthorizationException;
-import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockIllegalShareException;
 import us.kbase.shock.client.exceptions.ShockIllegalUnshareException;
 import us.kbase.shock.client.exceptions.ShockNoFileException;
@@ -156,53 +153,6 @@ public class ShockTests {
 	}
 	
 	@Test
-	public void setExpiredToken() throws Exception {
-		AuthToken exptok = new AuthToken(USER2.getTokenString(), 0);
-		//account for clockskew
-		long issued = exptok.getIssueDate().getTime();
-		long now = new Date().getTime();
-		long sleep = Math.max(issued - now, 1000);
-		System.out.println("setExpiredToken");
-		System.out.println("issued: " + issued);
-		System.out.println("now: " + now);
-		System.out.println("sleep: " + (sleep + 5));
-		
-		Thread.sleep(sleep + 5);
-		try {
-			BSC2.updateToken(exptok);
-			fail("accepted expired token on update");
-		} catch (TokenExpiredException tee) {}
-	}
-	
-	@Test
-	public void setOldToken() throws Exception {
-		AuthToken orig = USER2.getToken();
-		long issued = orig.getIssueDate().getTime();
-		long now = new Date().getTime();
-		long newexpires = Math.max((now - issued)/1000, 0) + 1;
-		//account for clockskew
-		long sleep = Math.max(issued - now, 0);
-		System.out.println("setOldToken");
-		System.out.println("issued: " + issued);
-		System.out.println("now:    " + now);
-		System.out.println("sleep: " + sleep);
-		System.out.println("new expires: " + newexpires);
-		Thread.sleep(sleep);
-		// authtoken takes seconds as input
-		AuthToken exptok = new AuthToken(orig.toString(), newexpires);
-		BSC2.updateToken(exptok); // will throw error if expired
-		Thread.sleep(2000);
-		assertTrue("expected token to be expired", BSC2.isTokenExpired());
-		try {
-			BSC2.addNode();
-			fail("Added node with expired token");
-		} catch (TokenExpiredException tee) {}
-		
-		BSC2.updateToken(orig); //restore to std state
-		assertFalse("token is now valid", BSC2.isTokenExpired());
-	}
-	
-	@Test
 	public void setNullToken() throws Exception {
 		AuthToken current = BSC1.getToken();
 		BSC1.updateToken(null);
@@ -247,27 +197,13 @@ public class ShockTests {
 		
 	}
 
-	/*
-	@Test
-	public void trystuffout() throws Exception {
-		
-		String exampleString = "foo";
-		
-		InputStream stream = new ByteArrayInputStream(
-				exampleString.getBytes(StandardCharsets.UTF_8));
-		ShockNode foo = BSC1.addNode(stream, "myfile", "foo");
-		System.out.println(foo);
-	}
-	*/
 	
 	@Test
 	public void addGetDeleteNodeBasic() throws Exception {
 		addGetDeleteNodeBasic(BSC1);
 	}
 	
-	private void addGetDeleteNodeBasic(BasicShockClient bsc)
-			throws IOException, ShockHttpException, TokenExpiredException,
-			Exception {
+	private void addGetDeleteNodeBasic(BasicShockClient bsc) throws Exception {
 		ShockNode sn = bsc.addNode();
 		ShockNode snget = bsc.getNode(sn.getId());
 		assertThat("get node != add Node output", snget.toString(), is(sn.toString()));
