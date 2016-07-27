@@ -17,7 +17,7 @@
     <include name="apache_commons/http/httpclient-4.3.1.jar"/>
     <include name="apache_commons/http/httpcore-4.3.jar"/>
     <include name="apache_commons/http/httpmime-4.3.1.jar"/>
-    <include name="kbase/auth/kbase-auth-0.3.2.jar"/>
+    <include name="kbase/auth/kbase-auth2-temp.jar"/>
     <include name="jackson/jackson-annotations-2.2.3.jar"/>
     <include name="jackson/jackson-core-2.2.3.jar"/>
     <include name="jackson/jackson-databind-2.2.3.jar"/>
@@ -33,7 +33,7 @@
     <include name="apache_commons/commons-lang-2.4.jar"/>
     <include name="apache_commons/velocity-1.7.jar"/>
     <include name="mongo/mongo-java-driver-2.13.3.jar"/>
-    <include name="kbase/common/kbase-common-0.0.15.jar"/>
+    <include name="kbase/common/kbase-common-auth2-temp.jar"/>
     <include name="jsemver/java-semver-0.9.0.jar"/>
   </fileset>
 	
