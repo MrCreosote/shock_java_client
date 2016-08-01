@@ -1,3 +1,12 @@
+VERSION: 0.0.14 (Released 7/31/2016)
+-----------------------------------------
+
+NEW FEATURES:
+- N/A
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- Updated to the latest auth and java common libraries.
+
 VERSION: 0.0.13 (Released 7/7/2016)
 -----------------------------------------
 
