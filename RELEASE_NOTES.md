@@ -1,3 +1,12 @@
+VERSION: 0.0.15 (Released 2/3/2017)
+-----------------------------------------
+
+NEW FEATURES:
+- N/A
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- Node attributes are now accepted and returned as Objects instead of Maps.
+
 VERSION: 0.0.14 (Released 7/31/2016)
 -----------------------------------------
 

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
-import java.util.Map;
 
 import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
@@ -38,7 +37,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ShockNode extends ShockData {
 
-	private Map<String, Object> attributes;
+	private Object attributes;
 	@JsonProperty("file")
 	private ShockFileInformation file;
 	private ShockNodeId id;
@@ -67,7 +66,7 @@ public class ShockNode extends ShockData {
 	 * mutate the internal representation of the attributes in this object.
 	 * @return the shock node's attributes.
 	 */
-	public Map<String, Object> getAttributes() {
+	public Object getAttributes() {
 		checkDeleted();
 		return attributes;
 	}

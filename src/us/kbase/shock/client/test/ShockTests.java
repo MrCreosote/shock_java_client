@@ -299,7 +299,35 @@ public class ShockTests {
 		BSC1.deleteNode(sn.getId());
 	}
 	
-	private void testAttribs(Map<String, Object> attribs, ShockNode sn) throws Exception {
+	@Test
+	public void getNodeWithStringAttribs() throws Exception {
+		final ShockNode sn = BSC1.addNode("foobar");
+		testAttribs("foobar", sn);
+		BSC1.deleteNode(sn.getId());
+	}
+	
+	@Test
+	public void getNodeWithIntAttribs() throws Exception {
+		final ShockNode sn = BSC1.addNode(1);
+		testAttribs(1, sn);
+		BSC1.deleteNode(sn.getId());
+	}
+	
+	@Test
+	public void getNodeWithListAttribs() throws Exception {
+		final ShockNode sn = BSC1.addNode(Arrays.asList("foo", 1));
+		testAttribs(Arrays.asList("foo", 1), sn);
+		BSC1.deleteNode(sn.getId());
+	}
+	
+	@Test
+	public void getNodeWithBooleanAttribs() throws Exception {
+		final ShockNode sn = BSC1.addNode(true);
+		testAttribs(true, sn);
+		BSC1.deleteNode(sn.getId());
+	}
+	
+	private void testAttribs(final Object attribs, final ShockNode sn) throws Exception {
 		ShockNode snget = BSC1.getNode(sn.getId());
 		assertThat("get node != add Node output", snget.toString(), is(sn.toString()));
 		assertThat("attribs altered", snget.getAttributes(), is(attribs));
@@ -539,10 +567,15 @@ public class ShockTests {
 		sn.delete();
 	}
 	
-	private void verifyStreamedNode(final ShockNode sn,
-			final Map<String, Object> attribs, final String string,
-			final long writes, final String last, final String filename,
-			final String format, final int id)
+	private void verifyStreamedNode(
+			final ShockNode sn,
+			final Object attribs,
+			final String string,
+			final long writes,
+			final String last,
+			final String filename,
+			final String format,
+			final int id)
 			throws Exception {
 		assertThat("attribs correct", sn.getAttributes(), is(attribs));
 		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
