@@ -12,10 +12,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import us.kbase.auth.AuthException;
-import us.kbase.auth.AuthService;
-import us.kbase.auth.AuthUser;
-import us.kbase.common.test.TestException;
+import us.kbase.auth.AuthToken;
 import us.kbase.common.test.controllers.mongo.MongoController;
 import us.kbase.common.test.controllers.shock.ShockController;
 import us.kbase.shock.client.BasicShockClient;
@@ -23,6 +20,7 @@ import us.kbase.shock.client.ShockNode;
 import us.kbase.shock.client.ShockNodeId;
 import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
+import us.kbase.test.auth2.authcontroller.AuthController;
 
 public class ShockTrustSSLTest {
 	
@@ -36,9 +34,11 @@ public class ShockTrustSSLTest {
 	 */
 	
 	private static MongoController MONGO;
+	private static AuthController AUTH;
 	private static ShockController SHOCK;
-
-	private static AuthUser USER;
+	
+	private static final String USER1 = "user1";
+	private static AuthToken TOKEN;
 	
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -47,6 +47,17 @@ public class ShockTrustSSLTest {
 		MONGO = new MongoController(ShockTestCommon.getMongoExe(),
 				Paths.get(ShockTestCommon.getTempDir()));
 		System.out.println("Using Mongo temp dir " + MONGO.getTempDir());
+		
+		AUTH = new AuthController(
+				ShockTestCommon.getJarsDir(),
+				"localhost:" + MONGO.getServerPort(),
+				"test_" + ShockTests.class.getSimpleName(),
+				Paths.get(ShockTestCommon.getTempDir()));
+		final URL authURL = new URL("http://localhost:" + AUTH.getServerPort() + "/testmode");
+		System.out.println("started auth server at " + authURL);
+		ShockTestCommon.createAuthUser(authURL, USER1, "display1");
+		final String token1 = ShockTestCommon.createLoginToken(authURL, USER1);
+		TOKEN = new AuthToken(token1, USER1);
 		
 		System.out.println("Passing version " +
 				ShockTestCommon.getShockVersion() + " to Shock controller");
@@ -58,7 +69,8 @@ public class ShockTrustSSLTest {
 				"localhost:" + MONGO.getServerPort(),
 				"ShockTests_ShockDB",
 				"foo",
-				"foo");
+				"foo",
+				new URL(authURL.toString() + "/api/legacy/globus"));
 		System.out.println("Shock controller registered version: "
 				+ SHOCK.getVersion());
 		if (SHOCK.getVersion() == null) {
@@ -69,22 +81,15 @@ public class ShockTrustSSLTest {
 		
 		URL url = new URL("http://localhost:" + SHOCK.getServerPort());
 		System.out.println("Testing shock clients pointed at: " + url);
-		String u1 = System.getProperty("test.user1");
-		String p1 = System.getProperty("test.pwd1");
-		
-		System.out.println("Logging in users");
-		try {
-			USER = AuthService.login(u1, p1);
-		} catch (AuthException ae) {
-			throw new TestException("Unable to login with test.user1: " + u1 +
-					"\nPlease check the credentials in the test configuration.", ae);
-		}
 	}
 	
 	@AfterClass
 	public static void tearDownClass() throws Exception {
 		if (SHOCK != null) {
 			SHOCK.destroy(ShockTestCommon.getDeleteTempFiles());
+		}
+		if (AUTH != null) {
+			AUTH.destroy(ShockTestCommon.getDeleteTempFiles());
 		}
 		if (MONGO != null) {
 			MONGO.destroy(ShockTestCommon.getDeleteTempFiles());
@@ -99,7 +104,7 @@ public class ShockTrustSSLTest {
 		//appreciated
 		BasicShockClient bsc = new BasicShockClient(
 				new URL("http://localhost:" + SHOCK.getServerPort()),
-				USER.getToken(), true);
+				TOKEN, true);
 		//also not testing the tokenless constructor since would require 
 		//spinning up another shock server that writable w/o auth, and that
 		//config isn't used in KBase

@@ -17,10 +17,7 @@ CONFIG_OPTS = ['test.shock.exe',
                'test.mongo.exe',
                'test.temp.dir',
                'test.temp.dir.keep',
-               'test.user1',
-               'test.pwd1',
-               'test.user2',
-               'test.pwd2',
+               'test.jars.dir',
                ]
 
 JAR_OPT = 'compile.jarfile'
@@ -44,9 +41,6 @@ if __name__ == '__main__':
     except KeyError as ke:
         print 'Test config file ' + fn + ' is missing section ' +\
             CFG_SECTION + '. Halting.'
-        sys.exit(1)
-    if testcfg['test.user1'] == testcfg['test.user2']:
-        print "The two test users are identical. Halting."
         sys.exit(1)
     with open(out, 'w') as run:
         run.write('# Generated file - do not check into git\n')
