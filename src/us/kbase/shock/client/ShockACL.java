@@ -124,6 +124,6 @@ public class ShockACL extends ShockData {
 	@Override
 	public String toString() {
 		return "ShockACL [owner=" + owner + ", read=" + read + ", write="
-				+ write + ", delete=" + delete + "]";
+				+ write + ", delete=" + delete + ", public=" + public_ + "]";
 	}
 }
