@@ -696,6 +696,25 @@ public class BasicShockClient {
 		return pos;
 	}
 	
+	//TODO NOW unlessAlreadyOwned boolean just returns same node
+	/** Makes a copy of a shock node, including the indexes and attributes, owned by the user.
+	 * @param id the ID of the shock node to copy.
+	 * @return the new shock node.
+	 * @throws ShockHttpException if a Shock exception occurs.
+	 * @throws IOException if an IO exception occurs.
+	 */
+	public ShockNode copyNode(final ShockNodeId id) throws ShockHttpException, IOException {
+		final HttpPost htp = new HttpPost(nodeurl);
+		final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
+		mpeb.addTextBody("copy_data", id.getId());
+		mpeb.addTextBody("copy_indexes", "1");
+		//TODO NOW copy attribs manually
+		htp.setEntity(mpeb.build());
+		final ShockNode sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
+		sn.addClient(this);
+		return sn;
+	}
+	
 	/**
 	 * Deletes a node on the shock server.
 	 * @param id the node to delete.

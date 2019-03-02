@@ -981,6 +981,33 @@ public class ShockTests {
 		}
 	}
 	
+	@Test
+	public void copyNode() throws Exception {
+		String content = "Been shopping? No, I've been shopping";
+		String name = "apistonengine.recipe";
+		//TODO NOW test indexes are copied
+		//TODO NOW test attribs are copied when that's fixed
+		//TODO NOW test failures - no node, no read
+		final ShockNode sn = addNode(BSC1, content, name, "text");
+		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
+		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.WRITE);
+		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.DELETE);
+		sn.setPubliclyReadable(true);
+		final ShockNode copy = BSC2.copyNode(sn.getId());
+		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
+		final ShockACL acl = copy.getACLs();
+		assertThat("correct owner", acl.getOwner(), is(USER2_SID));
+		assertThat("correct writers", acl.getWrite(), is(Arrays.asList(USER2_SID)));
+		assertThat("correct delete", acl.getDelete(), is(Arrays.asList(USER2_SID)));
+		assertThat("correct read", acl.getRead(), is(Arrays.asList(USER2_SID)));
+		assertThat("correct pub", acl.isPublicallyReadable(), is(false));
+		
+		copy.addToNodeAcl(Arrays.asList(USER1), ShockACLType.READ);
+		testFile(content, name, "text", copy);
+		BSC1.deleteNode(sn.getId());
+		BSC2.deleteNode(copy.getId());
+	}
+	
 	private void failSetPubliclyReadable(
 			final ShockNode node,
 			final boolean read,
