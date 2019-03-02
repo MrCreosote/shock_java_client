@@ -13,8 +13,7 @@ abstract class ShockResponse {
 
 	ShockResponse() {}
 
-	// per Jared, the error field will either be null or a list with one error
-	// string.
+	// per Jared, the error field will either be null or a list with one error string.
 	private List<String> error;
 	@SuppressWarnings("unused")
 	private ShockData data;
@@ -55,8 +54,7 @@ abstract class ShockResponse {
 							getStatus(), getError());
 				} else if (getError().equals(
 						"Deleting ownership is not a supported request type.")) {
-					throw new ShockIllegalUnshareException(
-							getStatus(), getError());
+					throw new ShockIllegalUnshareException(getStatus(), getError());
 				} else {
 					throw new ShockHttpException(getStatus(), getError());
 				}
