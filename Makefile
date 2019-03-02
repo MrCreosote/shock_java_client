@@ -1,3 +1,5 @@
+# TODO remove makefile entirely and just use ant
+
 ANT = ant
 
 GITCOMMIT := $(shell git rev-parse --short HEAD)
@@ -36,26 +38,6 @@ test-client:
 	test/cfg_to_runner.py $(SHOCK-CLIENT-JAR) $(TESTCFG)
 	test/run_tests.sh
 	
-test-service:
-	@echo "no service"
-
-test-scripts:
-	@echo "no scripts to test"
-	
-deploy:
-	@echo "nothing to deploy"
-
-deploy-client:
-	@echo "nothing to deploy"
-
-deploy-docs:
-	@echo "nothing to deploy"
-
-deploy-scripts:
-	@echo "nothing to deploy"
-
-deploy-service:
-	@echo "nothing to deploy"
 
 clean:
 	$(ANT) clean

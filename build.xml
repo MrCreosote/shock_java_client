@@ -33,7 +33,9 @@
     <include name="apache_commons/commons-lang-2.4.jar"/>
     <include name="apache_commons/velocity-1.7.jar"/>
     <include name="mongo/mongo-java-driver-2.13.3.jar"/>
-    <include name="kbase/common/kbase-common-0.0.18.jar"/>
+    <include name="kbase/common/kbase-common-0.0.25.jar"/>
+    <include name="kbase/auth2/kbase-auth2test-0.2.4.jar"/>
+    <include name="google/guava-18.0.jar"/>
     <include name="jsemver/java-semver-0.9.0.jar"/>
   </fileset>
 	
@@ -86,10 +88,7 @@
     <fail unless="test.shock.version" message="property test.shock.version not set."/>
     <fail unless="test.mongo.exe" message="property test.mongo.exe not set."/>
     <fail unless="test.temp.dir" message="property test.temp.dir not set."/>
-    <fail unless="test.user1" message="property test.user1 not set."/>
-    <fail unless="test.pwd1" message="property test.pwd1 not set."/>
-    <fail unless="test.user2" message="property test.user2 not set."/>
-    <fail unless="test.pwd2" message="property test.pwd2 not set."/>
+    <fail unless="test.jars.dir" message="property test.jars.dir not set."/>
     <echo message="starting ${package} tests"/>
     <echo message="testing against jar ${compile.jarfile}.jar"/>
     <junit failureproperty="test.failed" fork="yes">
@@ -101,10 +100,7 @@
       <sysproperty key="test.mongo.exe" value="${test.mongo.exe}"/>
       <sysproperty key="test.temp.dir" value="${test.temp.dir}"/>
       <sysproperty key="test.temp.dir.keep" value="${test.temp.dir.keep}"/>
-      <sysproperty key="test.user1" value="${test.user1}"/>
-      <sysproperty key="test.pwd1" value="${test.pwd1}"/>
-      <sysproperty key="test.user2" value="${test.user2}"/>
-      <sysproperty key="test.pwd2" value="${test.pwd2}"/>
+      <sysproperty key="test.jars.dir" value="${test.jars.dir}"/>
       <test name="us.kbase.shock.client.test.ShockTests"/>
       <test name="us.kbase.shock.client.test.ShockTrustSSLTest"/>
     </junit>
