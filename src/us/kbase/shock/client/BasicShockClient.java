@@ -325,8 +325,7 @@ public class BasicShockClient {
 	 * @throws ShockHttpException if the node could not be fetched from shock.
 	 * expired.
 	 */
-	public ShockNode getNode(final ShockNodeId id) throws IOException,
-			ShockHttpException {
+	public ShockNode getNode(final ShockNodeId id) throws IOException, ShockHttpException {
 		if (id == null) {
 			throw new NullPointerException("id may not be null");
 		}
@@ -704,14 +703,22 @@ public class BasicShockClient {
 	 * @throws IOException if an IO exception occurs.
 	 */
 	public ShockNode copyNode(final ShockNodeId id) throws ShockHttpException, IOException {
-		final ShockNode source = getNode(id); //TODO NOW use to get attribs or return if owned
+		final ShockNode source = getNode(id);
 		final HttpPost htp = new HttpPost(nodeurl);
 		final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
 		mpeb.addTextBody("copy_data", id.getId());
 		mpeb.addTextBody("copy_indexes", "1");
-		//TODO NOW copy attribs manually
 		htp.setEntity(mpeb.build());
-		final ShockNode sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
+		ShockNode sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
+		if (source.getAttributes() != null) {
+			// as of shock 0.9.13 copy_attributes=1 will copy the attributes, but until then...
+			final HttpPut put = new HttpPut(nodeurl.resolve(sn.getId().getId()));
+			final MultipartEntityBuilder mpeb2 = MultipartEntityBuilder.create();
+			final byte[] attribs = mapper.writeValueAsBytes(source.getAttributes());
+			mpeb2.addBinaryBody("attributes", attribs, ContentType.APPLICATION_JSON, ATTRIBFILE);
+			put.setEntity(mpeb2.build());
+			sn = (ShockNode) processRequest(put, ShockNodeResponse.class);
+		}
 		sn.addClient(this);
 		return sn;
 	}
