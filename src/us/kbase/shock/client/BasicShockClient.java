@@ -704,6 +704,7 @@ public class BasicShockClient {
 	 * @throws IOException if an IO exception occurs.
 	 */
 	public ShockNode copyNode(final ShockNodeId id) throws ShockHttpException, IOException {
+		final ShockNode source = getNode(id); //TODO NOW use to get attribs or return if owned
 		final HttpPost htp = new HttpPost(nodeurl);
 		final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
 		mpeb.addTextBody("copy_data", id.getId());

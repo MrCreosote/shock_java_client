@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.io.Writer;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -19,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
@@ -30,13 +32,21 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.ReaderInputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
 import com.gc.iotools.stream.os.OutputStreamToInputStream;
 import com.github.zafarkhaja.semver.Version;
+import com.google.common.collect.ImmutableMap;
 
 import us.kbase.auth.AuthToken;
 import us.kbase.common.test.TestException;
@@ -983,16 +993,15 @@ public class ShockTests {
 	
 	@Test
 	public void copyNode() throws Exception {
-		String content = "Been shopping? No, I've been shopping";
+		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		//TODO NOW test indexes are copied
 		//TODO NOW test attribs are copied when that's fixed
-		//TODO NOW test failures - no node, no read
 		final ShockNode sn = addNode(BSC1, content, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.WRITE);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.DELETE);
 		sn.setPubliclyReadable(true);
+		createLineIndex(BSC1, sn.getId());
 		final ShockNode copy = BSC2.copyNode(sn.getId());
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
 		final ShockACL acl = copy.getACLs();
@@ -1001,11 +1010,76 @@ public class ShockTests {
 		assertThat("correct delete", acl.getDelete(), is(Arrays.asList(USER2_SID)));
 		assertThat("correct read", acl.getRead(), is(Arrays.asList(USER2_SID)));
 		assertThat("correct pub", acl.isPublicallyReadable(), is(false));
+		assertLineIndexExists(
+				BSC2, copy.getId(), ImmutableMap.of("total_units", 3, "average_unit_size", 13));
 		
 		copy.addToNodeAcl(Arrays.asList(USER1), ShockACLType.READ);
 		testFile(content, name, "text", copy);
 		BSC1.deleteNode(sn.getId());
 		BSC2.deleteNode(copy.getId());
+	}
+
+	private String getNodeRaw(final BasicShockClient client, final ShockNodeId id)
+			throws Exception {
+		final CloseableHttpClient http = HttpClients.custom().build();
+		final HttpGet put = new HttpGet(new URI(
+				BSC1.getShockUrl().toString() + "/node/" + id.getId()));
+		put.addHeader("authorization", "oauth " + client.getToken().getToken());
+		final CloseableHttpResponse res = http.execute(put);
+		return IOUtils.toString(res.getEntity().getContent());
+	}
+	
+	// the shock client doesn't handle indexes yet so we do it manually
+	private void createLineIndex(final BasicShockClient client, final ShockNodeId id)
+			throws Exception {
+		final CloseableHttpClient http = HttpClients.custom().build();
+		final HttpPut put = new HttpPut(new URI(
+				BSC1.getShockUrl().toString() + "/node/" + id.getId() + "/index/line"));
+		put.addHeader("authorization", "oauth " + client.getToken().getToken());
+		final CloseableHttpResponse res = http.execute(put);
+		if (res.getStatusLine().getStatusCode() != 200) {
+			throw new TestException("failed to create index, " +
+				res.getStatusLine().getStatusCode());
+		}
+	}
+
+	private void assertLineIndexExists(
+			final BasicShockClient client,
+			final ShockNodeId id,
+			final Map<String, Object> expectedIndex)
+			throws Exception {
+		final String nstr = getNodeRaw(client, id);
+		final Map<String, Object> node = new ObjectMapper().readValue(
+				nstr, new TypeReference<Map<String, Object>>() {});
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> data = (Map<String, Object>) node.get("data");
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> indexes = (Map<String, Object>) data.get("indexes");
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> line = (Map<String, Object>) indexes.get("line");
+		assertThat("incorrect line index", line, is(expectedIndex));
+	}
+
+	@Test
+	public void copyNodeFail() throws Exception {
+		final ShockNode sn = BSC1.addNode();
+		
+		copyNodeFail(BSC1, new ShockNodeId(UUID.randomUUID().toString()),
+				new ShockNoNodeException(400, "Node not found"));
+		
+		copyNodeFail(BSC2, sn.getId(), new ShockAuthorizationException(401, "User Unauthorized"));
+	}
+	
+	private void copyNodeFail(
+			final BasicShockClient client,
+			final ShockNodeId id,
+			final Exception expected) {
+		try {
+			client.copyNode(id);
+			fail("expected exception");
+		} catch (Exception got) {
+			assertExceptionCorrect(got, expected);
+		}
 	}
 	
 	private void failSetPubliclyReadable(

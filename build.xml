@@ -61,7 +61,7 @@
   <target name="compile" depends="init" description="compile the source">
     <fail unless="compile.jarfile" message="property compile.jarfile not set."/>
     <!-- Compile class files-->
-    <javac destdir="${classes}" includeantruntime="false" target="1.7" source="1.7"
+    <javac destdir="${classes}" includeantruntime="false" target="1.8" source="1.8"
       debug="true" classpathref="compile.classpath">
       <src path="${src}"/>
     </javac>
