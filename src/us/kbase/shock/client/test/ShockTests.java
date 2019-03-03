@@ -19,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
@@ -987,7 +988,6 @@ public class ShockTests {
 		String name = "apistonengine.recipe";
 		//TODO NOW test indexes are copied
 		//TODO NOW test attribs are copied when that's fixed
-		//TODO NOW test failures - no node, no read
 		final ShockNode sn = addNode(BSC1, content, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.WRITE);
@@ -1006,6 +1006,28 @@ public class ShockTests {
 		testFile(content, name, "text", copy);
 		BSC1.deleteNode(sn.getId());
 		BSC2.deleteNode(copy.getId());
+	}
+	
+	@Test
+	public void copyNodeFail() throws Exception {
+		final ShockNode sn = BSC1.addNode();
+		
+		copyNodeFail(BSC1, new ShockNodeId(UUID.randomUUID().toString()),
+				new ShockNoNodeException(400, "Node not found"));
+		
+		copyNodeFail(BSC2, sn.getId(), new ShockAuthorizationException(401, "User Unauthorized"));
+	}
+	
+	private void copyNodeFail(
+			final BasicShockClient client,
+			final ShockNodeId id,
+			final Exception expected) {
+		try {
+			client.copyNode(id);
+			fail("expected exception");
+		} catch (Exception got) {
+			assertExceptionCorrect(got, expected);
+		}
 	}
 	
 	private void failSetPubliclyReadable(
