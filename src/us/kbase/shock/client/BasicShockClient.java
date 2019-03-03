@@ -709,11 +709,11 @@ public class BasicShockClient {
 		final ShockNode source = getNode(id);
 		/* So it's possible to construct a token where the name is not the correct name for
 		 * the token. In this case though, the user is just screwing themselves because at 
-		 * this point all that'll happen is they'll make a copy when they didn't want to, since
-		 * the line above already guarantees they can read the node.
+		 * this point all that'll happen is they'll make a copy when they didn't want to or
+		 * vice versa, since the line above already guarantees they can read the node.
 		 */
 		if (unlessAlreadyOwned &&
-				getACLs(source.getId()).getOwner().getUsername().equals(token.getUserName())) {
+				source.getACLs().getOwner().getUsername().equals(token.getUserName())) {
 			return source;
 		}
 		final HttpPost htp = new HttpPost(nodeurl);
