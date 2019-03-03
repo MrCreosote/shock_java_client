@@ -1,5 +1,12 @@
 package us.kbase.shock.client.test;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,12 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
@@ -995,8 +996,9 @@ public class ShockTests {
 	public void copyNode() throws Exception {
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		//TODO NOW test attribs are copied when that's fixed
-		final ShockNode sn = addNode(BSC1, content, name, "text");
+		final Map<String, Object> attribs = ImmutableMap.of(
+				"foo", Arrays.asList("yay"), "bar", ImmutableMap.of("baz", 1));
+		final ShockNode sn = addNode(BSC1, attribs, content, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.WRITE);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.DELETE);
@@ -1015,6 +1017,30 @@ public class ShockTests {
 		
 		copy.addToNodeAcl(Arrays.asList(USER1), ShockACLType.READ);
 		testFile(content, name, "text", copy);
+		assertThat("incorrect attribs", copy.getAttributes(), is(attribs));
+		BSC1.deleteNode(sn.getId());
+		BSC2.deleteNode(copy.getId());
+	}
+	
+	@Test
+	public void copyNodeNoAttribs() throws Exception {
+		// don't repeat tests from copyNode()
+		String content = "Been\n shopping? No,\n I've been shopping";
+		String name = "apistonengine.recipe";
+		final ShockNode sn = addNode(BSC1, content, name, "text");
+		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
+		final ShockNode copy = BSC2.copyNode(sn.getId());
+		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
+		final ShockACL acl = copy.getACLs();
+		assertThat("correct owner", acl.getOwner(), is(USER2_SID));
+		assertThat("correct writers", acl.getWrite(), is(Arrays.asList(USER2_SID)));
+		assertThat("correct delete", acl.getDelete(), is(Arrays.asList(USER2_SID)));
+		assertThat("correct read", acl.getRead(), is(Arrays.asList(USER2_SID)));
+		assertThat("correct pub", acl.isPublicallyReadable(), is(false));
+		
+		copy.addToNodeAcl(Arrays.asList(USER1), ShockACLType.READ);
+		testFile(content, name, "text", copy);
+		assertThat("incorrect attribs", copy.getAttributes(), nullValue());
 		BSC1.deleteNode(sn.getId());
 		BSC2.deleteNode(copy.getId());
 	}
