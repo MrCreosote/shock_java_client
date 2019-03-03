@@ -1004,7 +1004,7 @@ public class ShockTests {
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.DELETE);
 		sn.setPubliclyReadable(true);
 		createLineIndex(BSC1, sn.getId());
-		final ShockNode copy = BSC2.copyNode(sn.getId());
+		final ShockNode copy = BSC2.copyNode(sn.getId(), false);
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
 		final ShockACL acl = copy.getACLs();
 		assertThat("correct owner", acl.getOwner(), is(USER2_SID));
@@ -1023,13 +1023,15 @@ public class ShockTests {
 	}
 	
 	@Test
-	public void copyNodeNoAttribs() throws Exception {
+	public void copyNodeNoAttribsAndNotAlreadyOwned() throws Exception {
+		// tests the case where the user requests no copy if the node is owned by the user,
+		// but it isn't.
 		// don't repeat tests from copyNode()
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
 		final ShockNode sn = addNode(BSC1, content, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
-		final ShockNode copy = BSC2.copyNode(sn.getId());
+		final ShockNode copy = BSC2.copyNode(sn.getId(), true);
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
 		final ShockACL acl = copy.getACLs();
 		assertThat("correct owner", acl.getOwner(), is(USER2_SID));
@@ -1043,6 +1045,26 @@ public class ShockTests {
 		assertThat("incorrect attribs", copy.getAttributes(), nullValue());
 		BSC1.deleteNode(sn.getId());
 		BSC2.deleteNode(copy.getId());
+	}
+	
+	@Test
+	public void copyNodeNoAttribsAndAlreadyOwned() throws Exception {
+		// don't repeat tests from copyNode()
+		String content = "Been\n shopping? No,\n I've been shopping";
+		String name = "apistonengine.recipe";
+		final ShockNode sn = addNode(BSC1, content, name, "text");
+		final ShockNode copy = BSC1.copyNode(sn.getId(), true);
+		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(true));
+		final ShockACL acl = copy.getACLs();
+		assertThat("correct owner", acl.getOwner(), is(USER1_SID));
+		assertThat("correct writers", acl.getWrite(), is(Arrays.asList(USER1_SID)));
+		assertThat("correct delete", acl.getDelete(), is(Arrays.asList(USER1_SID)));
+		assertThat("correct read", acl.getRead(), is(Arrays.asList(USER1_SID)));
+		assertThat("correct pub", acl.isPublicallyReadable(), is(false));
+		
+		testFile(content, name, "text", copy);
+		assertThat("incorrect attribs", copy.getAttributes(), nullValue());
+		BSC1.deleteNode(sn.getId());
 	}
 
 	private String getNodeRaw(final BasicShockClient client, final ShockNodeId id)
@@ -1101,7 +1123,7 @@ public class ShockTests {
 			final ShockNodeId id,
 			final Exception expected) {
 		try {
-			client.copyNode(id);
+			client.copyNode(id, false);
 			fail("expected exception");
 		} catch (Exception got) {
 			assertExceptionCorrect(got, expected);
@@ -1396,6 +1418,33 @@ public class ShockTests {
 		failSetPubliclyReadable(BSC1, id, false, new ShockNoNodeException(
 				404, "Node not found"));
 		
+	}
+	
+	@Test
+	public void getACLsWithReadPermission() throws Exception {
+		final ShockNode sn = BSC1.addNode();
+		failGetACLS(BSC2, sn.getId(), new ShockAuthorizationException(401, "User Unauthorized"));
+		
+		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
+		final ShockACL acl = BSC2.getACLs(sn.getId());
+		assertThat("correct owner", acl.getOwner(), is(USER1_SID));
+		assertThat("correct writers", acl.getWrite(), is(Arrays.asList(USER1_SID)));
+		assertThat("correct delete", acl.getDelete(), is(Arrays.asList(USER1_SID)));
+		assertThat("correct read", acl.getRead(), is(Arrays.asList(USER1_SID, USER2_SID)));
+		assertThat("correct pub", acl.isPublicallyReadable(), is(false));
+	}
+	
+	private void failGetACLS(
+			final BasicShockClient client,
+			final ShockNodeId id,
+			final Exception expected)
+			throws Exception {
+		try {
+			client.getACLs(id);
+			fail("expected exception");
+		} catch (Exception got) {
+			assertExceptionCorrect(got, expected);
+		}
 	}
 	
 	private List<ShockUserId> getAcls(ShockACL acl, ShockACLType type) {

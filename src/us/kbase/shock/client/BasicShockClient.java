@@ -695,15 +695,27 @@ public class BasicShockClient {
 		return pos;
 	}
 	
-	//TODO NOW unlessAlreadyOwned boolean just returns same node
 	/** Makes a copy of a shock node, including the indexes and attributes, owned by the user.
 	 * @param id the ID of the shock node to copy.
-	 * @return the new shock node.
+	 * @param unlessAlreadyOwned if true and the shock node is already owned by the user,
+	 * don't make a copy.
+	 * @return the new shock node, or the node from the id if unlessAlreadyOwned is true and
+	 * the user already owns the node.
 	 * @throws ShockHttpException if a Shock exception occurs.
 	 * @throws IOException if an IO exception occurs.
 	 */
-	public ShockNode copyNode(final ShockNodeId id) throws ShockHttpException, IOException {
+	public ShockNode copyNode(final ShockNodeId id, final boolean unlessAlreadyOwned)
+			throws ShockHttpException, IOException {
 		final ShockNode source = getNode(id);
+		/* So it's possible to construct a token where the name is not the correct name for
+		 * the token. In this case though, the user is just screwing themselves because at 
+		 * this point all that'll happen is they'll make a copy when they didn't want to or
+		 * vice versa, since the line above already guarantees they can read the node.
+		 */
+		if (unlessAlreadyOwned &&
+				source.getACLs().getOwner().getUsername().equals(token.getUserName())) {
+			return source;
+		}
 		final HttpPost htp = new HttpPost(nodeurl);
 		final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
 		mpeb.addTextBody("copy_data", id.getId());
@@ -837,8 +849,7 @@ public class BasicShockClient {
 	 */
 	public ShockACL getACLs(final ShockNodeId id)
 			throws IOException, ShockHttpException {
-		final URI targeturl = nodeurl.resolve(id.getId() +
-				ShockACLType.ALL.getUrlFragmentForAcl() + "?verbosity=full");
+		final URI targeturl = nodeurl.resolve(id.getId() + "/acl/?verbosity=full");
 		final HttpGet htg = new HttpGet(targeturl);
 		return (ShockACL) processRequest(htg, ShockACLResponse.class);
 	}
