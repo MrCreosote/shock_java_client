@@ -1,3 +1,12 @@
+VERSION: 0.0.16 (Released 3/3/2019)
+-----------------------------------------
+
+NEW FEATURES:
+- Added the copyNode function.
+
+UPDATED FEATURES / MAJOR BUG FIXES:
+- Fix a bug getting ACLs from a read-only node.
+
 VERSION: 0.0.15 (Released 2/3/2017)
 -----------------------------------------
 
