@@ -1,7 +1,6 @@
 package us.kbase.shock.client.test;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -9,17 +8,16 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.io.Writer;
-import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,21 +31,13 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.ReaderInputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gc.iotools.stream.is.InputStreamFromOutputStream;
 import com.gc.iotools.stream.os.OutputStreamToInputStream;
 import com.github.zafarkhaja.semver.Version;
-import com.google.common.collect.ImmutableMap;
 
 import us.kbase.auth.AuthToken;
 import us.kbase.common.test.TestException;
@@ -142,8 +132,12 @@ public class ShockTests {
 		VERSION = Version.valueOf(BSC1.getShockVersion());
 		System.out.println("Set up shock clients for Shock version " +
 				BSC1.getShockVersion());
-		USER1_SID = BSC1.addNode().getACLs().getOwner();
-		USER2_SID = BSC2.addNode().getACLs().getOwner();
+		USER1_SID = BSC1.addNode(getIS(), "f", null).getACLs().getOwner();
+		USER2_SID = BSC2.addNode(getIS(), "f", null).getACLs().getOwner();
+	}
+	
+	private static InputStream getIS() {
+		return new ByteArrayInputStream("a".getBytes());
 	}
 	
 	@AfterClass
@@ -164,7 +158,7 @@ public class ShockTests {
 		AuthToken current = BSC1.getToken();
 		BSC1.updateToken(null);
 		try {
-			BSC1.addNode();
+			BSC1.addNode(getIS(), "f", null);
 			fail("Added node with no token");
 		} catch (ShockAuthorizationException sae) {
 			assertThat("correct exception message", sae.getLocalizedMessage(),
@@ -212,7 +206,7 @@ public class ShockTests {
 	}
 	
 	private void addGetDeleteNodeBasic(BasicShockClient bsc) throws Exception {
-		ShockNode sn = bsc.addNode();
+		ShockNode sn = bsc.addNode(getIS(), "f", null);
 		ShockNode snget = bsc.getNode(sn.getId());
 		assertThat("get node != add Node output", snget.toString(), is(sn.toString()));
 		bsc.deleteNode(sn.getId());
@@ -249,16 +243,12 @@ public class ShockTests {
 	
 	@Test
 	public void deleteByNode() throws Exception {
-		ShockNode sn = BSC1.addNode();
+		ShockNode sn = BSC1.addNode(getIS(), "f", null);
 		ShockNodeId id = sn.getId();
 		sn.delete();
 		getDeletedNode(id);
 		try {
 			sn.delete();
-			fail("Method ran on deleted node");
-		} catch (ShockNodeDeletedException snde) {}
-		try {
-			sn.getAttributes();
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
 		try {
@@ -287,60 +277,6 @@ public class ShockTests {
 		} catch (ShockNodeDeletedException snde) {}
 	}
 	
-	private Map<String,Object> makeSomeAttribs(String astring) {
-		Map<String, Object> attribs = new HashMap<String, Object>();
-		List<Object> l = new ArrayList<Object>();
-		l.add("alist");
-		l.add(astring);
-		Map<String, Object> inner = new HashMap<String, Object>();
-		inner.put("entity", "enigma");
-		l.add(inner);
-		attribs.put("foo", l);
-		return attribs;
-	}
-	
-	@Test
-	public void getNodeWithAttribs() throws Exception {
-		Map<String, Object> attribs = makeSomeAttribs("funkycoldmedina");
-		ShockNode sn = BSC1.addNode(attribs);
-		testAttribs(attribs, sn);
-		BSC1.deleteNode(sn.getId());
-	}
-	
-	@Test
-	public void getNodeWithStringAttribs() throws Exception {
-		final ShockNode sn = BSC1.addNode("foobar");
-		testAttribs("foobar", sn);
-		BSC1.deleteNode(sn.getId());
-	}
-	
-	@Test
-	public void getNodeWithIntAttribs() throws Exception {
-		final ShockNode sn = BSC1.addNode(1);
-		testAttribs(1, sn);
-		BSC1.deleteNode(sn.getId());
-	}
-	
-	@Test
-	public void getNodeWithListAttribs() throws Exception {
-		final ShockNode sn = BSC1.addNode(Arrays.asList("foo", 1));
-		testAttribs(Arrays.asList("foo", 1), sn);
-		BSC1.deleteNode(sn.getId());
-	}
-	
-	@Test
-	public void getNodeWithBooleanAttribs() throws Exception {
-		final ShockNode sn = BSC1.addNode(true);
-		testAttribs(true, sn);
-		BSC1.deleteNode(sn.getId());
-	}
-	
-	private void testAttribs(final Object attribs, final ShockNode sn) throws Exception {
-		ShockNode snget = BSC1.getNode(sn.getId());
-		assertThat("get node != add Node output", snget.toString(), is(sn.toString()));
-		assertThat("attribs altered", snget.getAttributes(), is(attribs));
-	}
-	
 	@Test
 	public void getNodeWithFile() throws Exception {
 		String content = "Been shopping? No, I've been shopping";
@@ -350,17 +286,28 @@ public class ShockTests {
 		BSC1.deleteNode(sn.getId());
 	}
 	
+	@Test
+	public void getNodeWithFileAndWhitespaceFormat() throws Exception {
+		String content = "Been shopping? No, I've been shopping";
+		String name = "apistonengine.recipe";
+		ShockNode sn = addNode(BSC1, content, name, "     \t   ");
+		testFile(content, name, null, sn);
+		BSC1.deleteNode(sn.getId());
+	}
+	
+	@Test
+	public void getNodeWithFileAndFormat() throws Exception {
+		String content = "Like the downy growth on the upper lip of a mediterranean girl";
+		String name = "bydemagogueryImeandemagoguery";
+		ShockNode sn = addNode(BSC1,  content, name, "UTF-8");
+		testFile(content, name, "UTF-8", sn);
+		sn.delete();
+	}
+	
 	private ShockNode addNode(BasicShockClient bsc, String content, String name,
 			String format)
 			throws Exception {
 		return bsc.addNode(new ReaderInputStream(new StringReader(content)),
-				name, format);
-	}
-	
-	private ShockNode addNode(BasicShockClient bsc, Map<String, Object> attribs,
-			String content, String name, String format)
-			throws Exception {
-		return bsc.addNode(attribs, new ReaderInputStream(new StringReader(content)),
 				name, format);
 	}
 	
@@ -410,62 +357,12 @@ public class ShockTests {
 		@Override
 		public void run() {
 			try {
-				ShockNode sn = writeFileToNode(null, s, count, "", "" + id, "JSON", id);
-				verifyStreamedNode(sn, null, s, count, "", "" + id, "JSON", id);
+				ShockNode sn = writeFileToNode(s, count, "", "" + id, "JSON", id);
+				verifyStreamedNode(sn, s, count, "", "" + id, "JSON", id);
 				sn.delete();
 			} catch (Exception e) {
 				this.e = e;
 			}
-		}
-	}
-	
-	@Test
-	public void getFileViaInputStreamArrayRead() throws Exception {
-		/* this is mostly tested in the streaming files tests, which fully
-		 * exercise the standard paths. This tests the read(byte, int, int)
-		 * method other than fetching another chunk.
-		 */
-		
-		String f = "wheee!";
-		ShockNode sn = BSC1.addNode(new ByteArrayInputStream(
-				f.getBytes(StandardCharsets.UTF_8)), "foo", "UTF-8");
-		InputStream is = sn.getFile();
-		byte[] b = new byte[7];
-		failRead(is, null, 1, 3, new NullPointerException());
-		failRead(is, b, -1, 3, new IndexOutOfBoundsException());
-		failRead(is, b, 0, -1, new IndexOutOfBoundsException());
-		failRead(is, b, 1, 7, new IndexOutOfBoundsException());
-		
-		assertThat("incorrect read length", is.read(b, 0, 0), is(0));
-		assertThat("incorrect read length", is.read(b, 0, 2), is(2));
-		assertThat("incorrect read", new String(b, 0, 2, "UTF-8"), is("wh"));
-		assertThat("incorrect read length", is.read(b, 0, 7), is(4));
-		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("eee!"));
-		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
-		is.close();
-		
-		is = sn.getFile();
-		assertThat("incorrect read length", is.read(b, 0, 2), is(2));
-		assertThat("incorrect read", new String(b, 0, 2, "UTF-8"), is("wh"));
-		assertThat("incorrect read length", is.read(b, 1, 3), is(3));
-		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("weee"));
-		assertThat("incorrect read length", is.read(b, 3, 2), is(1));
-		assertThat("incorrect read", new String(b, 0, 4, "UTF-8"), is("wee!"));
-		assertThat("incorrect read length", is.read(b, 0, 1), is(-1));
-		
-		is = sn.getFile();
-		is.close();
-		failRead(is, b, 0, 1, new IOException("Stream is closed."));
-		
-	}
-	
-	private void failRead(InputStream is, byte[] b, int off, int len,
-			Exception exp) {
-		try {
-			is.read(b, off, len);
-			fail("read successfully but expected fail");
-		} catch (Exception got) {
-			assertExceptionCorrect(got, exp);
 		}
 	}
 	
@@ -487,11 +384,10 @@ public class ShockTests {
 		 */
 		
 		// won't get new chunk
-		ShockNode sn = writeFileToNode(null, "aaaaaaaaaa", 4999999,
+		ShockNode sn = writeFileToNode("aaaaaaaaaa", 4999999,
 				"abcdefghij", "foo", "UTF-8", 1);
 		InputStream is = sn.getFile();
-		byte[] b = new byte[49999990];
-		is.read(b);
+		new DataInputStream(is).readFully(new byte[49999990]);
 		int offset = 97; //a in ascii
 		for (int i = 0; i < 10; i++) {
 			assertThat("incorrect read", is.read(), is(i + offset));
@@ -499,11 +395,10 @@ public class ShockTests {
 		assertThat("incorrect read", is.read(), is(-1));
 		
 		// will get new 1 byte chunk
-		sn = writeFileToNode(null, "aaaaaaaaaa", 4999999,
+		sn = writeFileToNode("aaaaaaaaaa", 4999999,
 				"abcdefghijk", "foo", "UTF-8", 1);
 		is = sn.getFile();
-		b = new byte[49999990];
-		is.read(b);
+		new DataInputStream(is).readFully(new byte[49999990]);
 		for (int i = 0; i < 11; i++) {
 			assertThat("incorrect read", is.read(), is(i + offset));
 		}
@@ -516,16 +411,13 @@ public class ShockTests {
 			fail("Read successfully but expected fail");
 		} catch (IOException e) {
 			assertThat("incorrect exception message", e.getMessage(),
-					is("Stream is closed."));
+					is("Attempted read on closed stream."));
 		}
 	}
 	
 	@Test
 	public void saveAndGetStreamingFiles() throws Exception {
-		int chunksize = BasicShockClient.getChunkSize();
-		if (chunksize % 10 != 0) {
-			throw new TestException("expected chunk size to be divisible by 10");
-		}
+		int chunksize = 50000000;
 		StringBuilder sb = new StringBuilder();
 		sb.append("abcd");
 		sb.appendCodePoint(0x0100);
@@ -550,34 +442,33 @@ public class ShockTests {
 		String sbs = sbsmall.toString();
 		String sbs2 = sbs + sbs;
 		
-		ShockNode sn = writeFileToNode(attribs, sb.toString(), minwrites, sbs, "filename", "JSON", 1);
-		verifyStreamedNode(sn, attribs, sb.toString(), minwrites, sbs, "filename", "JSON", 1);
+		ShockNode sn = writeFileToNode(sb.toString(), minwrites, sbs, "filename", "JSON", 1);
+		verifyStreamedNode(sn, sb.toString(), minwrites, sbs, "filename", "JSON", 1);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + "~", "a", null, 2);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + "~", "a", null, 2);
+		sn = writeFileToNode(sb.toString(), minwrites, sbs + "~", "a", null, 2);
+		verifyStreamedNode(sn, sb.toString(), minwrites, sbs + "~", "a", null, 2);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites, sbs + ch2, "b", "", 3);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites, sbs + ch2, "b", null, 3);
+		sn = writeFileToNode(sb.toString(), minwrites, sbs + ch2, "b", "", 3);
+		verifyStreamedNode(sn, sb.toString(), minwrites, sbs + ch2, "b", null, 3);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + "j", "myfile", "", 4);
-		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + "j", "myfile", null, 4);
+		sn = writeFileToNode(sb.toString(), minwrites * 2, sbs2 + "j", "myfile", "", 4);
+		verifyStreamedNode(sn, sb.toString(), minwrites * 2, sbs2 + "j", "myfile", null, 4);
 		sn.delete();
 		
-		sn = writeFileToNode(null, sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
-		verifyStreamedNode(sn, null, sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
+		sn = writeFileToNode(sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
+		verifyStreamedNode(sn, sb.toString(), minwrites * 2, sbs2 + ch2, "somefile", "UTF-8", 5);
 		sn.delete();
 		
-		sn = writeFileToNode(attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
-		verifyStreamedNode(sn, attribs, sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
+		sn = writeFileToNode(sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
+		verifyStreamedNode(sn, sb.toString(), minwrites * 2, sbs2 + ch3, "whee", "ASCII", 6);
 		sn.delete();
 	}
 	
 	private void verifyStreamedNode(
 			final ShockNode sn,
-			final Object attribs,
 			final String string,
 			final long writes,
 			final String last,
@@ -585,7 +476,6 @@ public class ShockTests {
 			final String format,
 			final int id)
 			throws Exception {
-		assertThat("attribs correct", sn.getAttributes(), is(attribs));
 		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
 		final long filesize = readlen * writes + finallen;
@@ -672,9 +562,13 @@ public class ShockTests {
 		return pos;
 	}
 
-	private ShockNode writeFileToNode(final Map<String, Object> attribs,
-			final String string, final long writes, final String last,
-			final String filename, final String format, final int id)
+	private ShockNode writeFileToNode(
+			final String string,
+			final long writes,
+			final String last,
+			final String filename,
+			final String format,
+			final int id)
 			throws Exception {
 		final int readlen = string.getBytes(StandardCharsets.UTF_8).length;
 		final int finallen = last.getBytes(StandardCharsets.UTF_8).length;
@@ -702,12 +596,7 @@ public class ShockTests {
 			}
 		};
 		System.out.println("ID " + id + " Streaming " + filesize + "b file... ");
-		ShockNode sn;
-		if (attribs == null) {
-			sn = BSC1.addNode(isos, filename, format);
-		} else {
-			sn = BSC1.addNode(attribs, isos, filename, format);
-		}
+		ShockNode sn = BSC1.addNode(isos, filename, format);
 		isos.close();
 		System.out.println("\tID " + id + " Streaming done.");
 		return sn;
@@ -716,21 +605,16 @@ public class ShockTests {
 //	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
-		if (BasicShockClient.getChunkSize() != 50000000) {
-			throw new TestException("expected chunk size to be 100000000");
-		}
 		StringBuilder sb = new StringBuilder();
 		sb.append("abcd");
 		sb.appendCodePoint(0x20AC);
 		
 		StringBuilder last = new StringBuilder();
 		last.appendCodePoint(0x10310);
-		Map<String, Object> attribs = new HashMap<String, Object>();
-		attribs.put("foo", "bar");
 		
 		final long writes = 571428571;
-		ShockNode sn = writeFileToNode(attribs, sb.toString(), writes, last.toString(), "somefile", "JSON", 1);
-		verifyStreamedNode(sn, attribs, sb.toString(), writes, last.toString(), "somefile", "JSON", 1);
+		ShockNode sn = writeFileToNode(sb.toString(), writes, last.toString(), "somefile", "JSON", 1);
+		verifyStreamedNode(sn, sb.toString(), writes, last.toString(), "somefile", "JSON", 1);
 		BSC1.deleteNode(sn.getId());
 	}
 	
@@ -789,19 +673,8 @@ public class ShockTests {
 	}
 	
 	@Test
-	public void getNodeWithFileAndAttribs() throws Exception {
-		String content = "Like the downy growth on the upper lip of a mediterranean girl";
-		String name = "bydemagogueryImeandemagoguery";
-		Map<String, Object> attribs = makeSomeAttribs("castellaandlillete");
-		ShockNode sn = addNode(BSC1, attribs, content, name, "UTF-8");
-		testFile(content, name, "UTF-8", sn);
-		testAttribs(attribs, sn);
-		sn.delete();
-	}
-	
-	@Test
 	public void invalidFileRequest() throws Exception {
-		ShockNode sn = BSC1.addNode();
+		ShockNode sn = BSC1.addNode(new ByteArrayInputStream("".getBytes()), "f", null);
 		try {
 			sn.getFile(new ByteArrayOutputStream());
 			fail("Got file from node w/o file");
@@ -909,14 +782,6 @@ public class ShockTests {
 	
 	@Test
 	public void addNodeNulls() throws Exception {
-		Map<String, Object> attribs = makeSomeAttribs("wuggawugga");
-		try {
-			BSC1.addNode(null);
-			fail("called addNode with null value");
-		} catch (IllegalArgumentException npe) {
-			assertThat("npe message incorrect", npe.getMessage(),
-					is("attributes may not be null"));
-		}
 		try {
 			BSC1.addNode(null, "foo", "foo");
 			fail("called addNode with null value");
@@ -933,34 +798,6 @@ public class ShockTests {
 		}
 		try {
 			addNode(BSC1, "foo", "", "foo");
-			fail("called addNode with null value");
-		} catch (IllegalArgumentException npe) {
-			assertThat("npe message incorrect", npe.getMessage(),
-					is("filename may not be null or empty"));
-		}
-		try {
-			addNode(BSC1, null, "foo", "foo", "foo");
-			fail("called addNode with null value");
-		} catch (IllegalArgumentException npe) {
-			assertThat("npe message incorrect", npe.getMessage(),
-					is("attributes may not be null"));
-		}
-		try {
-			BSC1.addNode(attribs, null, "foo", null);
-			fail("called addNode with null value");
-		} catch (IllegalArgumentException npe) {
-			assertThat("npe message incorrect", npe.getMessage(),
-					is("file may not be null"));
-		}
-		try {
-			addNode(BSC1, attribs, "foo", null, null);
-			fail("called addNode with null value");
-		} catch (IllegalArgumentException npe) {
-			assertThat("npe message incorrect", npe.getMessage(),
-					is("filename may not be null or empty"));
-		}
-		try {
-			addNode(BSC1, attribs, "foo", "", null);
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
@@ -996,14 +833,11 @@ public class ShockTests {
 	public void copyNode() throws Exception {
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		final Map<String, Object> attribs = ImmutableMap.of(
-				"foo", Arrays.asList("yay"), "bar", ImmutableMap.of("baz", 1));
-		final ShockNode sn = addNode(BSC1, attribs, content, name, "text");
+		final ShockNode sn = addNode(BSC1, content, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.WRITE);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.DELETE);
 		sn.setPubliclyReadable(true);
-		createLineIndex(BSC1, sn.getId());
 		final ShockNode copy = BSC2.copyNode(sn.getId(), false);
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
 		final ShockACL acl = copy.getACLs();
@@ -1012,12 +846,9 @@ public class ShockTests {
 		assertThat("correct delete", acl.getDelete(), is(Arrays.asList(USER2_SID)));
 		assertThat("correct read", acl.getRead(), is(Arrays.asList(USER2_SID)));
 		assertThat("correct pub", acl.isPublicallyReadable(), is(false));
-		assertLineIndexExists(
-				BSC2, copy.getId(), ImmutableMap.of("total_units", 3, "average_unit_size", 13));
 		
 		copy.addToNodeAcl(Arrays.asList(USER1), ShockACLType.READ);
 		testFile(content, name, "text", copy);
-		assertThat("incorrect attribs", copy.getAttributes(), is(attribs));
 		BSC1.deleteNode(sn.getId());
 		BSC2.deleteNode(copy.getId());
 	}
@@ -1042,7 +873,6 @@ public class ShockTests {
 		
 		copy.addToNodeAcl(Arrays.asList(USER1), ShockACLType.READ);
 		testFile(content, name, "text", copy);
-		assertThat("incorrect attribs", copy.getAttributes(), nullValue());
 		BSC1.deleteNode(sn.getId());
 		BSC2.deleteNode(copy.getId());
 	}
@@ -1063,54 +893,12 @@ public class ShockTests {
 		assertThat("correct pub", acl.isPublicallyReadable(), is(false));
 		
 		testFile(content, name, "text", copy);
-		assertThat("incorrect attribs", copy.getAttributes(), nullValue());
 		BSC1.deleteNode(sn.getId());
-	}
-
-	private String getNodeRaw(final BasicShockClient client, final ShockNodeId id)
-			throws Exception {
-		final CloseableHttpClient http = HttpClients.custom().build();
-		final HttpGet put = new HttpGet(new URI(
-				BSC1.getShockUrl().toString() + "/node/" + id.getId()));
-		put.addHeader("authorization", "oauth " + client.getToken().getToken());
-		final CloseableHttpResponse res = http.execute(put);
-		return IOUtils.toString(res.getEntity().getContent());
-	}
-	
-	// the shock client doesn't handle indexes yet so we do it manually
-	private void createLineIndex(final BasicShockClient client, final ShockNodeId id)
-			throws Exception {
-		final CloseableHttpClient http = HttpClients.custom().build();
-		final HttpPut put = new HttpPut(new URI(
-				BSC1.getShockUrl().toString() + "/node/" + id.getId() + "/index/line"));
-		put.addHeader("authorization", "oauth " + client.getToken().getToken());
-		final CloseableHttpResponse res = http.execute(put);
-		if (res.getStatusLine().getStatusCode() != 200) {
-			throw new TestException("failed to create index, " +
-				res.getStatusLine().getStatusCode());
-		}
-	}
-
-	private void assertLineIndexExists(
-			final BasicShockClient client,
-			final ShockNodeId id,
-			final Map<String, Object> expectedIndex)
-			throws Exception {
-		final String nstr = getNodeRaw(client, id);
-		final Map<String, Object> node = new ObjectMapper().readValue(
-				nstr, new TypeReference<Map<String, Object>>() {});
-		@SuppressWarnings("unchecked")
-		final Map<String, Object> data = (Map<String, Object>) node.get("data");
-		@SuppressWarnings("unchecked")
-		final Map<String, Object> indexes = (Map<String, Object>) data.get("indexes");
-		@SuppressWarnings("unchecked")
-		final Map<String, Object> line = (Map<String, Object>) indexes.get("line");
-		assertThat("incorrect line index", line, is(expectedIndex));
 	}
 
 	@Test
 	public void copyNodeFail() throws Exception {
-		final ShockNode sn = BSC1.addNode();
+		final ShockNode sn = BSC1.addNode(getIS(), "f", null);
 		
 		copyNodeFail(BSC1, new ShockNodeId(UUID.randomUUID().toString()),
 				new ShockNoNodeException(400, "Node not found"));
@@ -1422,7 +1210,7 @@ public class ShockTests {
 	
 	@Test
 	public void getACLsWithReadPermission() throws Exception {
-		final ShockNode sn = BSC1.addNode();
+		final ShockNode sn = BSC1.addNode(getIS(), "f", null);
 		failGetACLS(BSC2, sn.getId(), new ShockAuthorizationException(401, "User Unauthorized"));
 		
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
@@ -1540,7 +1328,7 @@ public class ShockTests {
 	private ShockNode setUpNodeAndCheckAuth(BasicShockClient source,
 			BasicShockClient check)
 			throws Exception {
-		ShockNode sn = source.addNode();
+		ShockNode sn = source.addNode(getIS(), "f", null);
 		try {
 			check.getNode(sn.getId());
 			fail("Node is readable with no permissions");
@@ -1554,7 +1342,7 @@ public class ShockTests {
 	
 	@Test
 	public void version() throws Exception {
-		ShockNode sn = BSC1.addNode();
+		ShockNode sn = BSC1.addNode(getIS(), "f", null);
 		sn.getVersion().getVersion(); //not much else to do here
 		List<String> badMD5s = Arrays.asList("fe90c05e51aa22e53daec604c815962g3",
 				"e90c05e51aa22e53daec604c815962f", "e90c05e51aa-2e53daec604c815962f3",

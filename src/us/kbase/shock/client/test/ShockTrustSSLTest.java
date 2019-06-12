@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Paths;
@@ -114,7 +115,7 @@ public class ShockTrustSSLTest {
 	private void addGetDeleteNodeBasic(BasicShockClient bsc)
 			throws IOException, ShockHttpException,
 			Exception {
-		ShockNode sn = bsc.addNode();
+		ShockNode sn = bsc.addNode(new ByteArrayInputStream("a".getBytes()), "f", null);
 		ShockNode snget = bsc.getNode(sn.getId());
 		assertThat("get node != add Node output", snget.toString(), is(sn.toString()));
 		bsc.deleteNode(sn.getId());

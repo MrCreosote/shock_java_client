@@ -19,6 +19,8 @@ import us.kbase.auth.AuthToken;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockNode;
 
+// totally useless now, client doesn't use chunks
+
 public class CompareChunkSize {
 	
 	public static void main(String[] args) throws Exception {
@@ -144,6 +146,7 @@ public class CompareChunkSize {
 			return stddev(mean, reads, false);
 		}
 		
+		@SuppressWarnings("deprecation")
 		private double stddev(double mean, List<Long> values, boolean population) {
 			if (values.size() < 2) {
 				return Double.NaN;
