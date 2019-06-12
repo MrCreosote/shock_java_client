@@ -37,7 +37,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ShockNode extends ShockData {
 
-	private Object attributes;
 	@JsonProperty("file")
 	private ShockFileInformation file;
 	private ShockNodeId id;
@@ -59,16 +58,6 @@ public class ShockNode extends ShockData {
 		if (deleted) {
 			throw new ShockNodeDeletedException();
 		}
-	}
-
-	/**
-	 * Get the shock node's attributes. Note mutating the attributes will
-	 * mutate the internal representation of the attributes in this object.
-	 * @return the shock node's attributes.
-	 */
-	public Object getAttributes() {
-		checkDeleted();
-		return attributes;
 	}
 
 	/** 
@@ -210,8 +199,7 @@ public class ShockNode extends ShockData {
 	 */
 	@Override
 	public String toString() {
-		return "ShockNode [attributes=" + attributes + ", file=" + file
-				+ ", id=" + id + ", version=" + version + ", deleted=" +
+		return "ShockNode [file=" + file + ", id=" + id + ", version=" + version + ", deleted=" +
 				deleted + "]";
 	}
 }

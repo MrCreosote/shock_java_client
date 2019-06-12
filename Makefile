@@ -5,7 +5,7 @@ ANT = ant
 GITCOMMIT := $(shell git rev-parse --short HEAD)
 EPOCH := $(shell date +%s)
 TAGS := $(shell git tag --contains $(GITCOMMIT))
-TAG := $(shell python internal/checktags.py $(TAGS))
+TAG := $(shell python3 internal/checktags.py $(TAGS))
 
 ERR := $(findstring Two valid tags for this commit, $(TAG))
 

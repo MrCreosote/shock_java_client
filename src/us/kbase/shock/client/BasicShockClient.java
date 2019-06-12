@@ -1,9 +1,9 @@
 package us.kbase.shock.client;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -11,12 +11,12 @@ import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -28,17 +28,16 @@ import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLContextBuilder;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
-import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.FormBodyPartBuilder;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.mime.content.InputStreamBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.util.EntityUtils;
 
 import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -49,7 +48,7 @@ import us.kbase.shock.client.exceptions.ShockNoFileException;
 
 /**
  * A basic client for shock. Creating nodes, deleting nodes,
- * getting a subset of node data, and altering read acls is currently supported.
+ * getting a subset of node data, and altering acls is currently supported.
  * 
  * Currently limited to 1000 connections.
  * 
@@ -67,19 +66,6 @@ public class BasicShockClient {
 	
 	private static final String AUTH = "Authorization";
 	private static final String OAUTH = "OAuth ";
-	private static final String ATTRIBFILE = "attribs";
-	
-	private static int CHUNK_SIZE = 50000000; //~50 Mb
-	
-	/** Get the size of the upload / download chunk size.
-	 * @return the size of the file chunks sent/received from the Shock server.
-	 */
-	public static int getChunkSize() {
-		return CHUNK_SIZE;
-	}
-	private static String getDownloadURLPrefix() {
-		return "/?download&index=size&chunk_size=" + CHUNK_SIZE + "&part=";
-	}
 	
 	private static synchronized void createHttpClient(
 			final boolean allowSelfSignedCerts) {
@@ -209,7 +195,7 @@ public class BasicShockClient {
 		this(url, allowSelfSignedCerts);
 		updateToken(token);
 		if (token != null) { // test shock config/auth etc.
-			final ShockNode sn = addNode();
+			final ShockNode sn = addNode(new ByteArrayInputStream("a".getBytes()), "f", null);
 			sn.delete();
 		}
 	}
@@ -331,8 +317,7 @@ public class BasicShockClient {
 		}
 		final URI targeturl = nodeurl.resolve(id.getId());
 		final HttpGet htg = new HttpGet(targeturl);
-		final ShockNode sn = (ShockNode) processRequest
-				(htg, ShockNodeResponse.class);
+		final ShockNode sn = (ShockNode) processRequest(htg, ShockNodeResponse.class);
 		sn.addClient(this);
 		return sn;
 	}
@@ -361,38 +346,29 @@ public class BasicShockClient {
 		if (os == null) {
 			throw new NullPointerException("os");
 		}
-		final int chunks = getChunks(sn);
-		final URI targeturl = nodeurl.resolve(sn.getId().getId() +
-				getDownloadURLPrefix());
-		for (int i = 0; i < chunks; i++) {
-			final HttpGet htg = new HttpGet(targeturl.toString() + (i + 1));
-			authorize(htg);
-			final CloseableHttpResponse response = client.execute(htg);
-			try {
-				final int code = response.getStatusLine().getStatusCode();
-				if (code > 299) {
-					getShockData(response, ShockNodeResponse.class); //trigger errors
-				}
-				os.write(EntityUtils.toByteArray(response.getEntity()));
-			} finally {
-				response.close();
+		final CloseableHttpResponse response = getFileResponse(sn);
+		try {
+			final int code = response.getStatusLine().getStatusCode();
+			if (code > 299) {
+				getShockData(response, ShockNodeResponse.class); //trigger errors
 			}
+			response.getEntity().writeTo(os);
+		} finally {
+			response.close();
 		}
 	}
-	
-	private static int getChunks(final ShockNode sn)
-			throws ShockNoFileException {
+	private CloseableHttpResponse getFileResponse(final ShockNode sn)
+			throws ShockNoFileException, IOException, ClientProtocolException {
 		if (sn == null) {
 			throw new NullPointerException("sn");
 		}
 		if (sn.getFileInformation().getSize() == 0) {
 			throw new ShockNoFileException(400, "Node has no file");
 		}
-		final BigDecimal size = new BigDecimal(
-				sn.getFileInformation().getSize());
-		//if there are more than 2^32 chunks we're in big trouble
-		return size.divide(new BigDecimal(CHUNK_SIZE))
-				.setScale(0, BigDecimal.ROUND_CEILING).intValueExact();
+		final URI targeturl = nodeurl.resolve(sn.getId().getId() + "/?download");
+		final HttpGet htg = new HttpGet(targeturl.toString());
+		authorize(htg);
+		return client.execute(htg);
 	}
 	
 	/**
@@ -407,8 +383,7 @@ public class BasicShockClient {
 		return getFile(getNode(id));
 	}
 	
-	/** Get the file for this shock node. The input stream this function
-	 * returns is naturally buffered.
+	/** Get the file for this shock node. The user is responsible for closing the returned stream.
 	 * @param sn the shock node from which to retrieve the file.
 	 * @return an input stream containing the file.
 	 * @throws IOException if an IO problem occurs.
@@ -416,131 +391,16 @@ public class BasicShockClient {
 	 */
 	public InputStream getFile(final ShockNode sn)
 			throws ShockHttpException, IOException {
-		return new ShockFileInputStream(sn);
-	}
-	
-	private class ShockFileInputStream extends InputStream {
-		
-		private final URI targeturl;
-		private final int chunks;
-		private int chunkCount = 0;
-		private byte[] chunk;
-		private int pos = 0;
-		private boolean closed = false;
-		
-		public ShockFileInputStream(final ShockNode sn)
-				throws ShockHttpException, IOException {
-			chunks = getChunks(sn);
-			targeturl = nodeurl.resolve(sn.getId().getId() +
-					getDownloadURLPrefix());
-			getNextChunk(); // must be at least one
+		final CloseableHttpResponse response = getFileResponse(sn);
+		final int code = response.getStatusLine().getStatusCode();
+		if (code > 299) {
+			getShockData(response, ShockNodeResponse.class); //trigger errors
 		}
-		private void getNextChunk() throws IOException, ShockHttpException {
-			if (chunkCount >= chunks) {
-				chunk = null;
-				return;
-			}
-			final HttpGet htg = new HttpGet(targeturl.toString() +
-					(chunkCount + 1));
-			authorize(htg);
-			final CloseableHttpResponse response = client.execute(htg);
-			try {
-				final int code = response.getStatusLine().getStatusCode();
-				if (code > 299) {
-					getShockData(response, ShockNodeResponse.class); //trigger errors
-				}
-				chunk = EntityUtils.toByteArray(response.getEntity());
-				chunkCount++;
-				pos = 0;
-			} finally {
-				response.close();
-			}
-		}
-
-		@Override
-		public int read() throws IOException {
-			if (closed) {
-				throw new IOException("Stream is closed.");
-			}
-			if (chunk == null) {
-				return -1;
-			}
-			final int i = chunk[pos] & 0xFF;
-			pos++;
-			if (pos >= chunk.length) {
-				getNextChunkWrapExcep();
-			}
-			return i;
-		}
-
-		private void getNextChunkWrapExcep() throws IOException {
-			try {
-				getNextChunk();
-			} catch (ShockHttpException e) {
-				throw new IOException("Couldn't fetch data from Shock: " +
-						e.getMessage(), e);
-			}
-		}
-		
-		@Override
-		public int read(byte b[], int off, int len) throws IOException {
-			if (closed) {
-				throw new IOException("Stream is closed.");
-			}
-			if (b == null) {
-				throw new NullPointerException();
-			} else if (off < 0 || len < 0 || len > b.length - off) {
-				throw new IndexOutOfBoundsException();
-			} else if (len == 0) {
-				return 0;
-			} else if (chunk == null) {
-				return -1;
-			}
-			if (pos + len >= chunk.length) {
-				System.arraycopy(chunk, pos, b, off, chunk.length - pos);
-				final int size = chunk.length - pos;
-				getNextChunkWrapExcep(); // sets chunk to null
-				return size;
-			} else {
-				System.arraycopy(chunk, pos, b, off, len);
-				pos += len;
-				return len;
-			}
-		}
-		
-		@Override
-		public void close() {
-			closed = true;
-			chunk = null;
-		}
-	}
-	
-	/**
-	 * Creates an empty node on the shock server.
-	 * @return a shock node object.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws ShockHttpException if the node could not be created.
-	 */
-	public ShockNode addNode() throws IOException, ShockHttpException {
-		return _addNode(null, null, null, null);
-	}
-	
-	/**
-	 * Creates a node on the shock server with user-specified attributes.
-	 * @param attributes the user-specified attributes. The attributes must be serializable to
-	 * JSON.
-	 * @return a shock node object.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws ShockHttpException if the node could not be created.
-	 * @throws JsonProcessingException if the <code>attributes</code> could
-	 * not be serialized to JSON.
-	 */
-	public ShockNode addNode(final Object attributes)
-			throws IOException, ShockHttpException, JsonProcessingException {
-		if (attributes == null) {
-			throw new IllegalArgumentException("attributes may not be null");
-		}
-		return _addNode(attributes, null, null, null);
+		// from https://hc.apache.org/httpcomponents-client-ga/tutorial/html/fundamentals.html#d5e145
+		// 1.1.5. Ensuring release of low level resources
+		// In order to ensure proper release of system resources one must close either the 
+		// content stream associated with the entity or the response itself
+		return response.getEntity().getContent();
 	}
 	
 	/**
@@ -548,7 +408,7 @@ public class BasicShockClient {
 	 * @param file the file data.
 	 * @param filename the name of the file.
 	 * @param format the format of the file, e.g. ASCII, UTF-8, JSON. Ignored
-	 * if null.
+	 * if null or whitespace only.
 	 * @return a shock node object.
 	 * @throws IOException if an IO problem occurs.
 	 * @throws ShockHttpException if the node could not be created.
@@ -562,137 +422,20 @@ public class BasicShockClient {
 			throw new IllegalArgumentException(
 					"filename may not be null or empty");
 		}
-		return _addNodeStreaming(null, file, filename, format);
-	}
-	
-	/**
-	 * Creates a node on the shock server with user-specified attributes and 
-	 * a file.
-	 * @param attributes the user-specified attributes. The attributes must be serializable to
-	 * JSON.
-	 * @param file the file data.
-	 * @param filename the name of the file.
-	 * @param format the format of the file, e.g. ASCII, UTF-8, JSON. Ignored
-	 * if null.
-	 * @return a shock node object.
-	 * @throws IOException if an IO problem occurs.
-	 * @throws ShockHttpException if the node could not be created.
-	 * @throws JsonProcessingException if the <code>attributes</code> could
-	 * not be serialized to JSON.
-	 */
-	public ShockNode addNode(
-			final Object attributes,
-			final InputStream file,
-			final String filename,
-			final String format)
-			throws IOException, ShockHttpException, JsonProcessingException {
-		if (attributes == null) {
-			throw new IllegalArgumentException("attributes may not be null");
-		}
-		if (file == null) {
-			throw new IllegalArgumentException("file may not be null");
-		}
-		if (filename == null || filename.isEmpty()) {
-			throw new IllegalArgumentException(
-					"filename may not be null or empty");
-		}
-		return _addNodeStreaming(attributes, file, filename, format);
-	}
-	
-	private ShockNode _addNode(
-			final Object attributes,
-			final byte[] file,
-			final String filename,
-			final String format)
-			throws IOException, ShockHttpException, JsonProcessingException {
 		final HttpPost htp = new HttpPost(nodeurl);
-		if (attributes != null || file != null) {
-			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
-			if (attributes != null) {
-				final byte[] attribs = mapper.writeValueAsBytes(attributes);
-				mpeb.addBinaryBody("attributes", attribs,
-						ContentType.APPLICATION_JSON, ATTRIBFILE);
-			}
-			if (file != null) {
-				mpeb.addBinaryBody("upload", file, ContentType.DEFAULT_BINARY,
-						filename);
-			}
-			if (format != null) {
-				mpeb.addTextBody("format", format);
-			}
-			htp.setEntity(mpeb.build());
+		final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
+		if (format != null && !format.trim().isEmpty()) {
+			mpeb.addTextBody("format", format);
 		}
-		final ShockNode sn = (ShockNode) processRequest(htp,
-				ShockNodeResponse.class);
+		mpeb.addPart(FormBodyPartBuilder.create()
+				.setName("upload")
+//				.setField("Content-Length", "1") // TODO NOW content length
+				.setBody(new InputStreamBody(file, filename))
+				.build());
+		htp.setEntity(mpeb.build());
+		final ShockNode sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
 		sn.addClient(this);
 		return sn;
-	}
-	
-	private ShockNode _addNodeStreaming(
-			final Object attributes,
-			final InputStream file,
-			final String filename,
-			final String format)
-			throws IOException, ShockHttpException, JsonProcessingException {
-		byte[] b = new byte[CHUNK_SIZE];
-		int read = read(file, b);
-		if (read < CHUNK_SIZE) {
-			return _addNode(attributes, Arrays.copyOf(b, read), filename,
-					format);
-		}
-		int chunks = 1;
-		ShockNode sn;
-		{
-			final HttpPost htp = new HttpPost(nodeurl);
-			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
-			mpeb.addTextBody("parts", "unknown");
-			if (attributes != null) {
-				final byte[] attribs = mapper.writeValueAsBytes(attributes);
-				mpeb.addBinaryBody("attributes", attribs,
-						ContentType.APPLICATION_JSON, ATTRIBFILE);
-			}
-			if (format != null && !format.isEmpty()) {
-				mpeb.addTextBody("format", format);
-			}
-			htp.setEntity(mpeb.build());
-			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
-		}
-		final URI targeturl = nodeurl.resolve(sn.getId().getId());
-		while (read > 0) {
-			final HttpPut htp = new HttpPut(targeturl);
-			if (read < CHUNK_SIZE) {
-				b = Arrays.copyOf(b, read);
-			}
-			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
-			mpeb.addBinaryBody("" + chunks, b, ContentType.DEFAULT_BINARY, filename);
-			htp.setEntity(mpeb.build());
-			processRequest(htp, ShockNodeResponse.class);
-			b = new byte[CHUNK_SIZE]; // could just zero it
-			read = read(file, b);
-			chunks++;
-		}
-		{
-			final HttpPut htp = new HttpPut(targeturl);
-			final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
-			mpeb.addTextBody("parts", "close");
-			mpeb.addTextBody("file_name", filename);
-			htp.setEntity(mpeb.build());
-			sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
-		}
-		sn.addClient(this);
-		return sn;
-	}
-	
-	private int read(final InputStream file, final byte[] b) throws IOException {
-		int pos = 0;
-		while (pos < b.length) {
-			final int read = file.read(b, pos, b.length - pos);
-			if (read == -1) {
-				break;
-			}
-			pos += read;
-		}
-		return pos;
 	}
 	
 	/** Makes a copy of a shock node, including the indexes and attributes, owned by the user.
@@ -719,18 +462,8 @@ public class BasicShockClient {
 		final HttpPost htp = new HttpPost(nodeurl);
 		final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
 		mpeb.addTextBody("copy_data", id.getId());
-		mpeb.addTextBody("copy_indexes", "1");
 		htp.setEntity(mpeb.build());
 		ShockNode sn = (ShockNode) processRequest(htp, ShockNodeResponse.class);
-		if (source.getAttributes() != null) {
-			// as of shock 0.9.13 copy_attributes=1 will copy the attributes, but until then...
-			final HttpPut put = new HttpPut(nodeurl.resolve(sn.getId().getId()));
-			final MultipartEntityBuilder mpeb2 = MultipartEntityBuilder.create();
-			final byte[] attribs = mapper.writeValueAsBytes(source.getAttributes());
-			mpeb2.addBinaryBody("attributes", attribs, ContentType.APPLICATION_JSON, ATTRIBFILE);
-			put.setEntity(mpeb2.build());
-			sn = (ShockNode) processRequest(put, ShockNodeResponse.class);
-		}
 		sn.addClient(this);
 		return sn;
 	}

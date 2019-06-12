@@ -12,8 +12,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 import us.kbase.auth.AuthConfig;
 import us.kbase.auth.AuthToken;
@@ -34,22 +32,16 @@ public class TryShock {
 				new URL("https://appdev.kbase.us/services/shock-api"), t);
 		System.out.println(c.getShockVersion());
 		
-		final Map<String, Object> attribs = new HashMap<String, Object>();
-		attribs.put("foo", "bar");
-		attribs.put("baz", Arrays.asList(1,2,3,5,8,13));
-		
 		final String s = "You try that around here, young man, and we'll slit your face";
 		final InputStream is = new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8));
 		
-		final ShockNode sn = c.addNode(attribs, is, "myfile", "UTF-8");
+		final ShockNode sn = c.addNode(is, "myfile", "UTF-8");
 		System.out.println(sn.getFileInformation());
 		
 		final ShockNode sn2 = c.getNode(sn.getId());
 		final ByteArrayOutputStream os = new ByteArrayOutputStream();
 		sn2.getFile(os);
 		System.out.println(new String(os.toByteArray(), StandardCharsets.UTF_8));
-		
-		System.out.println(sn2.getAttributes());
 		
 		final ShockACL acl1 = sn2.addToNodeAcl(Arrays.asList("kbasetest2"), ShockACLType.READ);
 		System.out.println(acl1.getRead());
@@ -59,8 +51,8 @@ public class TryShock {
 		
 		sn2.delete();
 	}
-
 }
+
 ```
 	
 Output:
@@ -68,7 +60,6 @@ Output:
 	0.9.6
 	ShockFileInformation [checksum={md5=42568d7a6f0b1d81eb3cc2ff53978f74}, name=myfile, format=UTF-8, size=61]
 	You try that around here, young man, and we'll slit your face
-	{baz=[1, 2, 3, 5, 8, 13], foo=bar}
 	[ShockUserId [uuid=23bf5737-85c5-4b5d-98dd-d5e9848d8d32, username=kbasetest],
 	 ShockUserId [uuid=0038a5e0-67c2-4ce5-b911-b6873b234788, username=kbasetest2]]
 	[ShockUserId [uuid=23bf5737-85c5-4b5d-98dd-d5e9848d8d32, username=kbasetest],

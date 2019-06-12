@@ -1,5 +1,15 @@
+VERSION: 0.1.0 (Released TBD)
+-----------------------------
+
+BACKWARDS INCOMPATIBILITIES:
+
+- Major rewrite for cross compatibility between Shock and https://github.com/kbase/blobstore.
+- A file is now required for node creation.
+- Attributes are not supported.
+- Indexes are not supported.
+
 VERSION: 0.0.16 (Released 3/3/2019)
------------------------------------------
+-----------------------------------
 
 NEW FEATURES:
 - Added the copyNode function.
