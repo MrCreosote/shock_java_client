@@ -35,7 +35,7 @@ public class TryShock {
 		final String s = "You try that around here, young man, and we'll slit your face";
 		final InputStream is = new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8));
 		
-		final ShockNode sn = c.addNode(is, "myfile", "UTF-8");
+		final ShockNode sn = c.addNode(is, 60, "myfile", "UTF-8");
 		System.out.println(sn.getFileInformation());
 		
 		final ShockNode sn2 = c.getNode(sn.getId());
@@ -52,7 +52,6 @@ public class TryShock {
 		sn2.delete();
 	}
 }
-
 ```
 	
 Output:

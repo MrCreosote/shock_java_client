@@ -40,7 +40,7 @@ public class ShockTrustSSLTest {
 	
 	private static final String USER1 = "user1";
 	private static AuthToken TOKEN;
-	
+
 	@BeforeClass
 	public static void setUpClass() throws Exception {
 		System.out.println("Java: " + System.getProperty("java.runtime.version"));
@@ -115,7 +115,7 @@ public class ShockTrustSSLTest {
 	private void addGetDeleteNodeBasic(BasicShockClient bsc)
 			throws IOException, ShockHttpException,
 			Exception {
-		ShockNode sn = bsc.addNode(new ByteArrayInputStream("a".getBytes()), "f", null);
+		ShockNode sn = bsc.addNode(new ByteArrayInputStream("a".getBytes()), 1, "f", null);
 		ShockNode snget = bsc.getNode(sn.getId());
 		assertThat("get node != add Node output", snget.toString(), is(sn.toString()));
 		bsc.deleteNode(sn.getId());

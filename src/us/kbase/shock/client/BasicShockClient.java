@@ -195,7 +195,7 @@ public class BasicShockClient {
 		this(url, allowSelfSignedCerts);
 		updateToken(token);
 		if (token != null) { // test shock config/auth etc.
-			final ShockNode sn = addNode(new ByteArrayInputStream("a".getBytes()), "f", null);
+			final ShockNode sn = addNode(new ByteArrayInputStream("a".getBytes()), 1, "f", null);
 			sn.delete();
 		}
 	}
@@ -406,6 +406,7 @@ public class BasicShockClient {
 	/**
 	 * Creates a node on the shock server containing a file.
 	 * @param file the file data.
+	 * @param fileLength the length of the file in bytes.
 	 * @param filename the name of the file.
 	 * @param format the format of the file, e.g. ASCII, UTF-8, JSON. Ignored
 	 * if null or whitespace only.
@@ -413,7 +414,11 @@ public class BasicShockClient {
 	 * @throws IOException if an IO problem occurs.
 	 * @throws ShockHttpException if the node could not be created.
 	 */
-	public ShockNode addNode(final InputStream file, final String filename, final String format)
+	public ShockNode addNode(
+			final InputStream file,
+			final long fileLength,
+			final String filename,
+			final String format)
 			throws IOException, ShockHttpException {
 		if (file == null) {
 			throw new IllegalArgumentException("file may not be null");
@@ -422,6 +427,9 @@ public class BasicShockClient {
 			throw new IllegalArgumentException(
 					"filename may not be null or empty");
 		}
+		if (fileLength < 0) {
+			throw new IllegalArgumentException("fileLength may not be negative");
+		}
 		final HttpPost htp = new HttpPost(nodeurl);
 		final MultipartEntityBuilder mpeb = MultipartEntityBuilder.create();
 		if (format != null && !format.trim().isEmpty()) {
@@ -429,7 +437,7 @@ public class BasicShockClient {
 		}
 		mpeb.addPart(FormBodyPartBuilder.create()
 				.setName("upload")
-//				.setField("Content-Length", "1") // TODO NOW content length
+				.setField("Content-Length", "" + fileLength)
 				.setBody(new InputStreamBody(file, filename))
 				.build());
 		htp.setEntity(mpeb.build());

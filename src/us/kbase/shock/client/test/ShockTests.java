@@ -132,8 +132,8 @@ public class ShockTests {
 		VERSION = Version.valueOf(BSC1.getShockVersion());
 		System.out.println("Set up shock clients for Shock version " +
 				BSC1.getShockVersion());
-		USER1_SID = BSC1.addNode(getIS(), "f", null).getACLs().getOwner();
-		USER2_SID = BSC2.addNode(getIS(), "f", null).getACLs().getOwner();
+		USER1_SID = BSC1.addNode(getIS(), 1, "f", null).getACLs().getOwner();
+		USER2_SID = BSC2.addNode(getIS(), 1, "f", null).getACLs().getOwner();
 	}
 	
 	private static InputStream getIS() {
@@ -158,7 +158,7 @@ public class ShockTests {
 		AuthToken current = BSC1.getToken();
 		BSC1.updateToken(null);
 		try {
-			BSC1.addNode(getIS(), "f", null);
+			BSC1.addNode(getIS(), 1, "f", null);
 			fail("Added node with no token");
 		} catch (ShockAuthorizationException sae) {
 			assertThat("correct exception message", sae.getLocalizedMessage(),
@@ -206,7 +206,7 @@ public class ShockTests {
 	}
 	
 	private void addGetDeleteNodeBasic(BasicShockClient bsc) throws Exception {
-		ShockNode sn = bsc.addNode(getIS(), "f", null);
+		ShockNode sn = bsc.addNode(getIS(), 1, "f", null);
 		ShockNode snget = bsc.getNode(sn.getId());
 		assertThat("get node != add Node output", snget.toString(), is(sn.toString()));
 		bsc.deleteNode(sn.getId());
@@ -243,7 +243,7 @@ public class ShockTests {
 	
 	@Test
 	public void deleteByNode() throws Exception {
-		ShockNode sn = BSC1.addNode(getIS(), "f", null);
+		ShockNode sn = BSC1.addNode(getIS(), 1, "f", null);
 		ShockNodeId id = sn.getId();
 		sn.delete();
 		getDeletedNode(id);
@@ -281,7 +281,7 @@ public class ShockTests {
 	public void getNodeWithFile() throws Exception {
 		String content = "Been shopping? No, I've been shopping";
 		String name = "apistonengine.recipe";
-		ShockNode sn = addNode(BSC1, content, name, null);
+		ShockNode sn = addNode(BSC1, content, 20, name, null);
 		testFile(content, name, null, sn);
 		BSC1.deleteNode(sn.getId());
 	}
@@ -290,7 +290,7 @@ public class ShockTests {
 	public void getNodeWithFileAndWhitespaceFormat() throws Exception {
 		String content = "Been shopping? No, I've been shopping";
 		String name = "apistonengine.recipe";
-		ShockNode sn = addNode(BSC1, content, name, "     \t   ");
+		ShockNode sn = addNode(BSC1, content, 20, name, "     \t   ");
 		testFile(content, name, null, sn);
 		BSC1.deleteNode(sn.getId());
 	}
@@ -299,16 +299,20 @@ public class ShockTests {
 	public void getNodeWithFileAndFormat() throws Exception {
 		String content = "Like the downy growth on the upper lip of a mediterranean girl";
 		String name = "bydemagogueryImeandemagoguery";
-		ShockNode sn = addNode(BSC1,  content, name, "UTF-8");
+		ShockNode sn = addNode(BSC1, content, 29, name, "UTF-8");
 		testFile(content, name, "UTF-8", sn);
 		sn.delete();
 	}
 	
-	private ShockNode addNode(BasicShockClient bsc, String content, String name,
-			String format)
+	private ShockNode addNode(
+			final BasicShockClient bsc,
+			final String content,
+			final long contentBytes,
+			final String name,
+			final String format)
 			throws Exception {
 		return bsc.addNode(new ReaderInputStream(new StringReader(content)),
-				name, format);
+				contentBytes, name, format);
 	}
 	
 //	@Ignore
@@ -596,13 +600,12 @@ public class ShockTests {
 			}
 		};
 		System.out.println("ID " + id + " Streaming " + filesize + "b file... ");
-		ShockNode sn = BSC1.addNode(isos, filename, format);
+		ShockNode sn = BSC1.addNode(isos, filesize, filename, format);
 		isos.close();
 		System.out.println("\tID " + id + " Streaming done.");
 		return sn;
 	}
 
-//	@Ignore
 	@Test
 	public void saveAndGetNodeWith4GBFile() throws Exception {
 		StringBuilder sb = new StringBuilder();
@@ -674,7 +677,7 @@ public class ShockTests {
 	
 	@Test
 	public void invalidFileRequest() throws Exception {
-		ShockNode sn = BSC1.addNode(new ByteArrayInputStream("".getBytes()), "f", null);
+		ShockNode sn = BSC1.addNode(new ByteArrayInputStream("".getBytes()), 0, "f", null);
 		try {
 			sn.getFile(new ByteArrayOutputStream());
 			fail("Got file from node w/o file");
@@ -761,7 +764,7 @@ public class ShockTests {
 		}
 		sn.delete();
 		
-		sn = addNode(BSC1, "Been shopping? No, I've been shopping", "filename",
+		sn = addNode(BSC1, "Been shopping? No, I've been shopping", 27, "filename",
 				null);
 		BSC1.deleteNode(sn.getId());
 		try {
@@ -783,25 +786,36 @@ public class ShockTests {
 	@Test
 	public void addNodeNulls() throws Exception {
 		try {
-			BSC1.addNode(null, "foo", "foo");
+			BSC1.addNode(null, 1, "foo", "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("file may not be null"));
 		}
 		try {
-			addNode(BSC1, "foo", null, "foo");
+			addNode(BSC1, "foo", 1, null, "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("filename may not be null or empty"));
 		}
 		try {
-			addNode(BSC1, "foo", "", "foo");
+			addNode(BSC1, "foo", 1, "", "foo");
 			fail("called addNode with null value");
 		} catch (IllegalArgumentException npe) {
 			assertThat("npe message incorrect", npe.getMessage(),
 					is("filename may not be null or empty"));
+		}
+	}
+	
+	@Test
+	public void addNodeFailNegativeSize() throws Exception {
+		try {
+			BSC1.addNode(getIS(), -1, "foo", "foo");
+			fail("called addNode with negative size");
+		} catch (IllegalArgumentException e) {
+			assertThat("exception message incorrect", e.getMessage(),
+					is("fileLength may not be negative"));
 		}
 	}
 	
@@ -833,7 +847,7 @@ public class ShockTests {
 	public void copyNode() throws Exception {
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		final ShockNode sn = addNode(BSC1, content, name, "text");
+		final ShockNode sn = addNode(BSC1, content, 43, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.WRITE);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.DELETE);
@@ -860,7 +874,7 @@ public class ShockTests {
 		// don't repeat tests from copyNode()
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		final ShockNode sn = addNode(BSC1, content, name, "text");
+		final ShockNode sn = addNode(BSC1, content, 43, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		final ShockNode copy = BSC2.copyNode(sn.getId(), true);
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
@@ -882,7 +896,7 @@ public class ShockTests {
 		// don't repeat tests from copyNode()
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		final ShockNode sn = addNode(BSC1, content, name, "text");
+		final ShockNode sn = addNode(BSC1, content, 43, name, "text");
 		final ShockNode copy = BSC1.copyNode(sn.getId(), true);
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(true));
 		final ShockACL acl = copy.getACLs();
@@ -898,7 +912,7 @@ public class ShockTests {
 
 	@Test
 	public void copyNodeFail() throws Exception {
-		final ShockNode sn = BSC1.addNode(getIS(), "f", null);
+		final ShockNode sn = BSC1.addNode(getIS(), 1, "f", null);
 		
 		copyNodeFail(BSC1, new ShockNodeId(UUID.randomUUID().toString()),
 				new ShockNoNodeException(400, "Node not found"));
@@ -1210,7 +1224,7 @@ public class ShockTests {
 	
 	@Test
 	public void getACLsWithReadPermission() throws Exception {
-		final ShockNode sn = BSC1.addNode(getIS(), "f", null);
+		final ShockNode sn = BSC1.addNode(getIS(), 1, "f", null);
 		failGetACLS(BSC2, sn.getId(), new ShockAuthorizationException(401, "User Unauthorized"));
 		
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
@@ -1328,7 +1342,7 @@ public class ShockTests {
 	private ShockNode setUpNodeAndCheckAuth(BasicShockClient source,
 			BasicShockClient check)
 			throws Exception {
-		ShockNode sn = source.addNode(getIS(), "f", null);
+		ShockNode sn = source.addNode(getIS(), 1, "f", null);
 		try {
 			check.getNode(sn.getId());
 			fail("Node is readable with no permissions");
@@ -1342,7 +1356,7 @@ public class ShockTests {
 	
 	@Test
 	public void version() throws Exception {
-		ShockNode sn = BSC1.addNode(getIS(), "f", null);
+		ShockNode sn = BSC1.addNode(getIS(), 1, "f", null);
 		sn.getVersion().getVersion(); //not much else to do here
 		List<String> badMD5s = Arrays.asList("fe90c05e51aa22e53daec604c815962g3",
 				"e90c05e51aa22e53daec604c815962f", "e90c05e51aa-2e53daec604c815962f3",

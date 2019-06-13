@@ -96,7 +96,7 @@ public class CompareChunkSize {
 		for (int i = 0; i < REPS; i++) {
 			System.out.print(i + " ");
 			long start = System.nanoTime();
-			ShockNode sn = bsc.addNode(new ByteArrayInputStream(data), "foo", "UTF-8");
+			ShockNode sn = bsc.addNode(new ByteArrayInputStream(data), DATA_SIZE, "foo", "UTF-8");
 			writes.add(System.nanoTime() - start);
 
 			start = System.nanoTime();
