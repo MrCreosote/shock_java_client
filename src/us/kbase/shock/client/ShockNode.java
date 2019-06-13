@@ -21,9 +21,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * 
  * <p>This class is never instantiated manually.</p>
  * 
- * Note that mutating the return value of the {@link #getAttributes()} method
- * will alter this object's internal representation of the attributes.
- * 
  * @author gaprice@lbl.gov
  *
  */
