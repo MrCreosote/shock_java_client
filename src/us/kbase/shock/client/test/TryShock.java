@@ -20,16 +20,16 @@ public class TryShock {
 	public static void main(String[] args) throws Exception {
 		final ConfigurableAuthService auth = new ConfigurableAuthService(new AuthConfig()
 				.withKBaseAuthServerURL(new URL(
-						"https://appdev.kbase.us/services/auth/api/legacy/KBase/Sessions/Login")));
+						"https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login")));
 		final AuthToken t = auth.validateToken(args[0]);
 		final BasicShockClient c = new BasicShockClient(
-				new URL("https://appdev.kbase.us/services/shock-api"), t);
+				new URL("http://localhost:45678"), t);
 		System.out.println(c.getShockVersion());
 		
 		final String s = "You try that around here, young man, and we'll slit your face";
 		final InputStream is = new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8));
 		
-		final ShockNode sn = c.addNode(is, 60, "myfile", "UTF-8");
+		final ShockNode sn = c.addNode(is, 61, "myfile", "UTF-8");
 		System.out.println(sn.getFileInformation());
 		
 		final ShockNode sn2 = c.getNode(sn.getId());
