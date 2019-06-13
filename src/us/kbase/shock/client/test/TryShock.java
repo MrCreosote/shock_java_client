@@ -20,10 +20,10 @@ public class TryShock {
 	public static void main(String[] args) throws Exception {
 		final ConfigurableAuthService auth = new ConfigurableAuthService(new AuthConfig()
 				.withKBaseAuthServerURL(new URL(
-						"https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login")));
+						"https://appdev.kbase.us/services/auth/api/legacy/KBase/Sessions/Login")));
 		final AuthToken t = auth.validateToken(args[0]);
 		final BasicShockClient c = new BasicShockClient(
-				new URL("http://localhost:45678"), t);
+				new URL("https://appdev.kbase.us/services/shock-api"), t);
 		System.out.println(c.getShockVersion());
 		
 		final String s = "You try that around here, young man, and we'll slit your face";
