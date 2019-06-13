@@ -5,6 +5,8 @@ BACKWARDS INCOMPATIBILITIES:
 
 - Major rewrite for cross compatibility between Shock and https://github.com/kbase/blobstore.
 - A file is now required for node creation.
+- The length of the file is required for node creation. In the case of the blobstore, if the
+  length is incorrect the file will fail to save.
 - Attributes are not supported.
 - Indexes are not supported.
 
