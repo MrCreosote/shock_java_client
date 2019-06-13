@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Later updates to the ACLs will not be reflected in the instance.
  * To update the local representation of the ACLs
  * {@link us.kbase.shock.client.BasicShockClient#getACLs(ShockNodeId)
- * getACLs()} must be called again.</p>
+ * getACLs()} must be called again.
  *
  * This class is never instantiated manually.
  * 
