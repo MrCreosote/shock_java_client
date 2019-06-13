@@ -1,5 +1,5 @@
-VERSION: 0.1.0 (Released TBD)
------------------------------
+VERSION: 0.1.0 (Released 6/13/2019)
+-----------------------------------
 
 BACKWARDS INCOMPATIBILITIES:
 
