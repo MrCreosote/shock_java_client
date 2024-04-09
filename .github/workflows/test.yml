@@ -42,7 +42,7 @@ jobs:
           export HOMEDIR=`pwd`
 
           # set up shock
-          export SHOCKEXE=$HOMEDIR/shock_java_client/shock_builds/kbase_fork/160815_e9f0e1618e265042bf5cb96429995b5e6ec0a06a/shock-server
+          export SHOCKEXE=$HOMEDIR/shock_builds/kbase_fork/160815_e9f0e1618e265042bf5cb96429995b5e6ec0a06a/shock-server
 
           # move to parent dir of homedir to install binaries etc
           cd ..
