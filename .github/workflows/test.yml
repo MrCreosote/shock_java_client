@@ -1,4 +1,4 @@
-name: KBase Workspace tests
+name: Shock Java Client Tests
 
 on:
   pull_request:
@@ -62,7 +62,7 @@ jobs:
           sed -i "s#^test.jars.dir.*#test.jars.dir=$JARSDIR#" test-actual.cfg
           sed -i "s#^test.mongo.exe.*#test.mongo.exe=$MONGOD#" test-actual.cfg
           sed -i "s#^test.shock.exe.*#test.shock.exe=$SHOCKEXE#" test-actual.cfg
-          cat test.cfg
+          cat test-actual.cfg
 
       - name: Run tests
         shell: bash
