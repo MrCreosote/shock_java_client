@@ -24,6 +24,7 @@
   </fileset>
 
   <fileset dir="${jardir}" id="testlib">
+    <include name="ini4j/ini4j-0.5.2.jar"/>
     <include name="easystream/easystream-1.2.13.jar"/>
     <include name="slf4j/slf4j-api-1.7.7.jar"/>
     <include name="junit/junit-4.9.jar"/>
@@ -83,24 +84,13 @@
   </target>
 
   <target name="test" depends="compile" description="run tests">
-    <fail unless="compile.jarfile" message="property compile.jarfile not set."/>
-    <fail unless="test.shock.exe" message="property test.shock.exe not set."/>
-    <fail unless="test.shock.version" message="property test.shock.version not set."/>
-    <fail unless="test.mongo.exe" message="property test.mongo.exe not set."/>
-    <fail unless="test.temp.dir" message="property test.temp.dir not set."/>
-    <fail unless="test.jars.dir" message="property test.jars.dir not set."/>
     <echo message="starting ${package} tests"/>
     <echo message="testing against jar ${compile.jarfile}.jar"/>
     <junit failureproperty="test.failed" fork="yes">
       <classpath path="${compile.jarfile}.jar"/>
       <classpath refid="compile.classpath"/>
       <formatter type="plain" usefile="false" />
-      <sysproperty key="test.shock.exe" value="${test.shock.exe}"/>
-      <sysproperty key="test.shock.version" value="${test.shock.version}"/>
-      <sysproperty key="test.mongo.exe" value="${test.mongo.exe}"/>
-      <sysproperty key="test.temp.dir" value="${test.temp.dir}"/>
-      <sysproperty key="test.temp.dir.keep" value="${test.temp.dir.keep}"/>
-      <sysproperty key="test.jars.dir" value="${test.jars.dir}"/>
+      <sysproperty key="test.cfg" value="./test.cfg"/>
       <test name="us.kbase.shock.client.test.ShockTests"/>
       <test name="us.kbase.shock.client.test.ShockTrustSSLTest"/>
     </junit>

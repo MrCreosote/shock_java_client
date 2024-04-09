@@ -58,15 +58,15 @@ jobs:
 
           # set up test config
           cd $HOMEDIR
-          cp test/test.cfg test/test-actual.cfg
-          sed -i "s#^test.jars.dir.*#test.jars.dir=$JARSDIR#" test/test-actual.cfg
-          sed -i "s#^test.mongo.exe.*#test.mongo.exe=$MONGOD#" test/test-actual.cfg
-          sed -i "s#^test.shock.exe.*#test.shock.exe=$SHOCKEXE#" test/test-actual.cfg
-          cat test/test-actual.cfg
+          cp test.cfg.example test.cfg
+          sed -i "s#^test.jars.dir.*#test.jars.dir=$JARSDIR#" test.cfg
+          sed -i "s#^test.mongo.exe.*#test.mongo.exe=$MONGOD#" test.cfg
+          sed -i "s#^test.shock.exe.*#test.shock.exe=$SHOCKEXE#" test.cfg
+          cat test.cfg
 
       - name: Run tests
         shell: bash
         run: |
-          make test TESTCFG=test-actual.cfg
+          make test
 
 # TODO COVERAGE - ant doesn't do coverage right now, just do it when gradle works

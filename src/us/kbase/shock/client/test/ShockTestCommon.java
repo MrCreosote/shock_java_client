@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
+import org.ini4j.Ini;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,40 +26,83 @@ public class ShockTestCommon {
 	public static final String KEEP_TEMP_DIR = "test.temp.dir.keep";
 	
 	public static final String JARS_PATH = "test.jars.dir";
+	
+	public static final String TEST_CONFIG_FILE_PROP_NAME = "test.cfg";
+	public static final String TEST_CONFIG_FILE_SECTION = "ShockClientTest";
 			
 	public static void printJava() {
 		System.out.println("Java: " + System.getProperty("java.runtime.version"));
 	}
 	
-	private static String getProp(String prop) {
-		if (System.getProperty(prop) == null || prop.isEmpty()) {
-			throw new TestException("Property " + prop + " cannot be null or the empty string.");
-		}
-		return System.getProperty(prop);
-	}
-	
 	public static String getTempDir() {
-		return getProp(TEST_TEMP_DIR);
+		return getTestProperty(TEST_TEMP_DIR);
 	}
 	
 	public static String getMongoExe() {
-		return getProp(MONGOEXE);
+		return getTestProperty(MONGOEXE);
 	}
 	
 	public static String getShockExe() {
-		return getProp(SHOCKEXE);
+		return getTestProperty(SHOCKEXE);
 	}
 	
 	public static String getShockVersion() {
-		return getProp(SHOCKVER);
+		return getTestProperty(SHOCKVER);
 	}
 	
 	public static Path getJarsDir() {
-		return Paths.get(getProp(JARS_PATH));
+		return Paths.get(getTestProperty(JARS_PATH));
 	}
 
 	public static boolean getDeleteTempFiles() {
-		return !"true".equals(System.getProperty(KEEP_TEMP_DIR));
+		return !"true".equals(getTestProperty(KEEP_TEMP_DIR, true));
+	}
+	
+	private static Map<String, String> testConfig;
+
+	public static String getTestProperty(final String propertyKey, final boolean allowNull) {
+		getTestConfig();
+		final String prop = testConfig.get(propertyKey);
+		if (!allowNull && (prop == null || prop.trim().isEmpty())) {
+			throw new TestException(String.format(
+					"Property %s in section %s of test file %s is missing",
+					propertyKey, TEST_CONFIG_FILE_SECTION, getConfigFilePath()));
+		}
+		return prop;
+	}
+
+	public static String getTestProperty(final String propertyKey) {
+		return getTestProperty(propertyKey, false);
+	}
+
+	private static void getTestConfig() {
+		if (testConfig != null) {
+			return;
+		}
+		final Path testCfgFilePath = getConfigFilePath();
+		final Ini ini;
+		try {
+			ini = new Ini(testCfgFilePath.toFile());
+		} catch (IOException ioe) {
+			throw new TestException(String.format(
+					"IO Error reading the test configuration file %s: %s",
+					testCfgFilePath, ioe.getMessage()), ioe);
+		}
+		testConfig = ini.get(TEST_CONFIG_FILE_SECTION);
+		if (testConfig == null) {
+			throw new TestException(String.format("No section %s found in test config file %s",
+					TEST_CONFIG_FILE_SECTION, testCfgFilePath));
+		}
+	}
+
+	private static Path getConfigFilePath() {
+		final String testCfgFilePathStr = System.getProperty(TEST_CONFIG_FILE_PROP_NAME);
+		if (testCfgFilePathStr == null || testCfgFilePathStr.trim().isEmpty()) {
+			throw new TestException(String.format("Cannot get the test config file path." +
+					" Ensure the java system property %s is set to the test config file location.",
+					TEST_CONFIG_FILE_PROP_NAME));
+		}
+		return Paths.get(testCfgFilePathStr).toAbsolutePath().normalize();
 	}
 	
 	public static void createAuthUser(
