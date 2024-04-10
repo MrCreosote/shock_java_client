@@ -1,4 +1,4 @@
-package us.kbase.shock.client.test;
+package us.kbase.test.shock.client;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
@@ -55,9 +55,9 @@ import us.kbase.shock.client.exceptions.ShockIllegalShareException;
 import us.kbase.shock.client.exceptions.ShockIllegalUnshareException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
-import us.kbase.shock.client.test.controllers.blobstore.BlobstoreController;
-import us.kbase.shock.client.test.controllers.minio.MinioController;
 import us.kbase.test.auth2.authcontroller.AuthController;
+import us.kbase.test.shock.client.controllers.blobstore.BlobstoreController;
+import us.kbase.test.shock.client.controllers.minio.MinioController;
 
 public class ShockTests {
 	

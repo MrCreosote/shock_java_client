@@ -1,4 +1,4 @@
-package us.kbase.shock.client.test;
+package us.kbase.test.shock.client;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

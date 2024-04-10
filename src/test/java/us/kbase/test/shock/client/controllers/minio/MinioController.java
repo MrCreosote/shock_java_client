@@ -1,4 +1,4 @@
-package us.kbase.shock.client.test.controllers.minio;
+package us.kbase.test.shock.client.controllers.minio;
 
 import static us.kbase.common.test.controllers.ControllerCommon.checkExe;
 import static us.kbase.common.test.controllers.ControllerCommon.findFreePort;
