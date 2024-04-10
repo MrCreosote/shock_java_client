@@ -17,6 +17,10 @@ import us.kbase.shock.client.ShockNode;
 
 public class TryShock {
 	
+	/** Run an example program interacting with the Blobstore, KBase's replacement for Shock.
+	 * @param args the CLI args.
+	 * @throws Exception if an exception occurs.
+	 */
 	public static void main(String[] args) throws Exception {
 		final ConfigurableAuthService auth = new ConfigurableAuthService(new AuthConfig()
 				.withKBaseAuthServerURL(new URL(
@@ -24,7 +28,7 @@ public class TryShock {
 		final AuthToken t = auth.validateToken(args[0]);
 		final BasicShockClient c = new BasicShockClient(
 				new URL("https://appdev.kbase.us/services/shock-api"), t);
-		System.out.println(c.getShockVersion());
+		System.out.println(c.getShockVersion()); // this is not actually the blobstore version
 		
 		final String s = "You try that around here, young man, and we'll slit your face";
 		final InputStream is = new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8));

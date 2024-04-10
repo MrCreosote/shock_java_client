@@ -77,6 +77,10 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          make test
+          ./gradlew test
 
-# TODO COVERAGE - ant doesn't do coverage right now, just do it when gradle works
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
