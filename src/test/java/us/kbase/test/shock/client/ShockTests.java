@@ -97,7 +97,6 @@ public class ShockTests {
 		
 		// set up auth
 		AUTH = new AuthController(
-				ShockTestCommon.getJarsDir(),
 				"localhost:" + MONGO.getServerPort(),
 				"test_" + ShockTests.class.getSimpleName(),
 				Paths.get(ShockTestCommon.getTempDir()));

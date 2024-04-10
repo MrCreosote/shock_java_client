@@ -25,8 +25,6 @@ public class ShockTestCommon {
 	public static final String TEST_TEMP_DIR = "test.temp.dir";
 	public static final String KEEP_TEMP_DIR = "test.temp.dir.keep";
 	
-	public static final String JARS_PATH = "test.jars.dir";
-	
 	public static final String TEST_CONFIG_FILE_PROP_NAME = "test.cfg";
 	public static final String TEST_CONFIG_FILE_SECTION = "ShockClientTest";
 			
@@ -50,10 +48,6 @@ public class ShockTestCommon {
 		return getTestProperty(MONGOEXE);
 	}
 	
-	public static Path getJarsDir() {
-		return Paths.get(getTestProperty(JARS_PATH));
-	}
-
 	public static boolean getDeleteTempFiles() {
 		return !"true".equals(getTestProperty(KEEP_TEMP_DIR, true));
 	}

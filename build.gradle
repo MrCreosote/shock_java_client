@@ -10,11 +10,9 @@ plugins {
 
 group = 'com.github.kbase'
 
-// TODO GRADLE update to auth2 shadow jar 0.7.0
 // TODO GRADLE update docs
 // TODO GRADLE update to jitpack built auth jar (javadoc as well)
 // TODO GRADLE publish w/ jitpack when auth jar pulled from jitpack
-// TODO GRADLE update to java common jar when published by jitpack
 
 repositories {
 	mavenCentral()
@@ -90,13 +88,12 @@ dependencies {
 	)
 
 	testImplementation fromURL(
-		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/auth2/kbase-auth2test-0.2.4.jar',
-		'kbase-auth2test-0.2.4.jar'
+		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/auth2/kbase-auth2-test-shadow-all-0.7.0.jar',
+		'kbase-auth2-test-shadow-all-0.7.0'
 	)
-	testImplementation 'com.google.guava:guava:18.0' // needed for auth controller
 	testImplementation fromURL(
-		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/common/kbase-common-0.0.25.jar',
-		'kbase-common-0.0.25'
+		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/common/kbase-common-0.2.0.jar',
+		'kbase-common-0.2.0'
 	)
 	testImplementation 'commons-io:commons-io:2.4'
 	testImplementation 'org.ini4j:ini4j:0.5.2'
