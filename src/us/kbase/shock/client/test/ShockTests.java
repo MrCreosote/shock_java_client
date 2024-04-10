@@ -42,21 +42,21 @@ import com.github.zafarkhaja.semver.Version;
 import us.kbase.auth.AuthToken;
 import us.kbase.common.test.TestException;
 import us.kbase.common.test.controllers.mongo.MongoController;
-import us.kbase.common.test.controllers.shock.ShockController;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockACL;
 import us.kbase.shock.client.ShockACLType;
 import us.kbase.shock.client.ShockNode;
 import us.kbase.shock.client.ShockNodeId;
 import us.kbase.shock.client.ShockUserId;
-import us.kbase.shock.client.ShockVersionStamp;
 import us.kbase.shock.client.exceptions.InvalidShockUrlException;
 import us.kbase.shock.client.exceptions.ShockAuthorizationException;
+import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockIllegalShareException;
 import us.kbase.shock.client.exceptions.ShockIllegalUnshareException;
-import us.kbase.shock.client.exceptions.ShockNoFileException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
+import us.kbase.shock.client.test.controllers.blobstore.BlobstoreController;
+import us.kbase.shock.client.test.controllers.minio.MinioController;
 import us.kbase.test.auth2.authcontroller.AuthController;
 
 public class ShockTests {
@@ -70,8 +70,9 @@ public class ShockTests {
 	private static ShockUserId USER2_SID;
 	
 	private static MongoController MONGO;
+	private static MinioController MINIO;
+	private static BlobstoreController BLOB;
 	private static AuthController AUTH;
-	private static ShockController SHOCK;
 	
 	private static Version VERSION;
 
@@ -82,6 +83,17 @@ public class ShockTests {
 		MONGO = new MongoController(ShockTestCommon.getMongoExe(),
 				Paths.get(ShockTestCommon.getTempDir()));
 		System.out.println("Using Mongo temp dir " + MONGO.getTempDir());
+		final String mongohost = "localhost:" + MONGO.getServerPort();
+
+		final String minioUser = "s3key";
+		final String minioKey = "supersecretkey";
+		MINIO = new MinioController(
+				ShockTestCommon.getMinioExe(),
+				minioUser,
+				minioKey,
+				Paths.get(ShockTestCommon.getTempDir())
+				);
+		System.out.println("Using Minio temp dir " + MINIO.getTempDir());
 		
 		// set up auth
 		AUTH = new AuthController(
@@ -98,28 +110,23 @@ public class ShockTests {
 		final AuthToken t1 = new AuthToken(token1, USER1);
 		final AuthToken t2 = new AuthToken(token2, USER2);
 		
-		System.out.println("Passing version " +
-				ShockTestCommon.getShockVersion() + " to Shock controller");
-		SHOCK = new ShockController(
-				ShockTestCommon.getShockExe(),
-				ShockTestCommon.getShockVersion(),
+		BLOB = new BlobstoreController(
+				ShockTestCommon.getBlobstoreExe(),
 				Paths.get(ShockTestCommon.getTempDir()),
-				"***---fakeuser---***",
-				"localhost:" + MONGO.getServerPort(),
-				"ShockTests_ShockDB",
-				"foo",
-				"foo",
-				new URL(authURL.toString() + "/api/legacy/globus"));
-		System.out.println("Shock controller registered version: "
-				+ SHOCK.getVersion());
-		if (SHOCK.getVersion() == null) {
-			System.out.println(
-					"Unregistered version - Shock may not start correctly");
-		}
-		System.out.println("Using Shock temp dir " + SHOCK.getTempDir());
+				mongohost,
+				ShockTests.class.getSimpleName() + "_blobstore_test",
+				"localhost:" + MINIO.getServerPort(),
+				"blobstore",
+				minioUser,
+				minioKey,
+				"us-west-1",
+				authURL,
+				Collections.emptyList());
+		final URL blobURL = new URL("http://localhost:" + BLOB.getPort());
+		System.out.println("started blobstore at " + blobURL);
+		System.out.println("Using Blobstore temp dir " + BLOB.getTempDir());
 		
-		
-		URL url = new URL("http://localhost:" + SHOCK.getServerPort());
+		final URL url = new URL("http://localhost:" + BLOB.getPort());
 		System.out.println("Testing shock clients pointed at: " + url);
 		
 		try {
@@ -142,8 +149,11 @@ public class ShockTests {
 	
 	@AfterClass
 	public static void tearDownClass() throws Exception {
-		if (SHOCK != null) {
-			SHOCK.destroy(ShockTestCommon.getDeleteTempFiles());
+		if (BLOB != null) {
+			BLOB.destroy(ShockTestCommon.getDeleteTempFiles());
+		}
+		if (MINIO != null) {
+			MINIO.destroy(ShockTestCommon.getDeleteTempFiles());
 		}
 		if (AUTH != null) {
 			AUTH.destroy(ShockTestCommon.getDeleteTempFiles());
@@ -264,11 +274,11 @@ public class ShockTests {
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
 		try {
-			sn.getId();
+			sn.getFormat();
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
 		try {
-			sn.getVersion();
+			sn.getId();
 			fail("Method ran on deleted node");
 		} catch (ShockNodeDeletedException snde) {}
 		try {
@@ -281,7 +291,7 @@ public class ShockTests {
 	public void getNodeWithFile() throws Exception {
 		String content = "Been shopping? No, I've been shopping";
 		String name = "apistonengine.recipe";
-		ShockNode sn = addNode(BSC1, content, 20, name, null);
+		ShockNode sn = addNode(BSC1, content, 37, name, null);
 		testFile(content, name, null, sn);
 		BSC1.deleteNode(sn.getId());
 	}
@@ -290,7 +300,7 @@ public class ShockTests {
 	public void getNodeWithFileAndWhitespaceFormat() throws Exception {
 		String content = "Been shopping? No, I've been shopping";
 		String name = "apistonengine.recipe";
-		ShockNode sn = addNode(BSC1, content, 20, name, "     \t   ");
+		ShockNode sn = addNode(BSC1, content, 37, name, "     \t   ");
 		testFile(content, name, null, sn);
 		BSC1.deleteNode(sn.getId());
 	}
@@ -299,7 +309,7 @@ public class ShockTests {
 	public void getNodeWithFileAndFormat() throws Exception {
 		String content = "Like the downy growth on the upper lip of a mediterranean girl";
 		String name = "bydemagogueryImeandemagoguery";
-		ShockNode sn = addNode(BSC1, content, 29, name, "UTF-8");
+		ShockNode sn = addNode(BSC1, content, 62, name, "UTF-8");
 		testFile(content, name, "UTF-8", sn);
 		sn.delete();
 	}
@@ -486,7 +496,7 @@ public class ShockTests {
 		assertThat("filesize correct", sn.getFileInformation().getSize(), is(filesize));
 		assertThat("filename correct", sn.getFileInformation().getName(),
 				is(filename));
-		assertThat("format correct", sn.getFileInformation().getFormat(), is(format));
+		assertThat("format correct", sn.getFormat(), is(format));
 		System.out.println("ID " + id + " Verifying " + filesize + "b file via outputstream... ");
 
 		OutputStreamToInputStream<String> osis =
@@ -669,7 +679,7 @@ public class ShockTests {
 		assertThat("file content unequal", filecon1, is(content));
 		assertThat("file name unequal", snget.getFileInformation().getName(),
 				is(name));
-		assertThat("file format unequal", snget.getFileInformation().getFormat(),
+		assertThat("file format unequal", snget.getFormat(),
 				is(format));
 		assertThat("file size wrong", snget.getFileInformation().getSize(),
 				is((long) content.length()));
@@ -677,27 +687,13 @@ public class ShockTests {
 	
 	@Test
 	public void invalidFileRequest() throws Exception {
-		ShockNode sn = BSC1.addNode(new ByteArrayInputStream("".getBytes()), 0, "f", null);
-		try {
-			sn.getFile(new ByteArrayOutputStream());
-			fail("Got file from node w/o file");
-		} catch (ShockNoFileException snfe) {
-			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
-					is("Node has no file"));
-		}
+		ShockNode sn = BSC1.addNode(new ByteArrayInputStream("a".getBytes()), 1, "f", null);
 		try {
 			sn.getFile(null);
 			fail("called get file w/ null arg");
 		} catch (NullPointerException ioe) {
 			assertThat("no file exc string incorrect", ioe.getLocalizedMessage(), 
 					is("os"));
-		}
-		try {
-			sn.getFile();
-			fail("Got file from node w/o file");
-		} catch (ShockNoFileException snfe) {
-			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
-					is("Node has no file"));
 		}
 		try {
 			BSC1.getFile((ShockNode) null, new ByteArrayOutputStream());
@@ -714,20 +710,6 @@ public class ShockTests {
 					is("sn"));
 		}
 		try {
-			BSC1.getFile(sn, new ByteArrayOutputStream());
-			fail("Got file from node w/o file");
-		} catch (ShockNoFileException snfe) {
-			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
-					is("Node has no file"));
-		}
-		try {
-			BSC1.getFile(sn);
-			fail("Got file from node w/o file");
-		} catch (ShockNoFileException snfe) {
-			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
-					is("Node has no file"));
-		}
-		try {
 			BSC1.getFile((ShockNodeId) null, new ByteArrayOutputStream());
 			fail("called get file w/ null arg");
 		} catch (NullPointerException npe) {
@@ -742,20 +724,6 @@ public class ShockTests {
 					is("id may not be null"));
 		}
 		try {
-			BSC1.getFile(sn.getId(), new ByteArrayOutputStream());
-			fail("Got file from node w/o file");
-		} catch (ShockNoFileException snfe) {
-			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
-					is("Node has no file"));
-		}
-		try {
-			BSC1.getFile(sn.getId());
-			fail("Got file from node w/o file");
-		} catch (ShockNoFileException snfe) {
-			assertThat("no file exc string incorrect", snfe.getLocalizedMessage(), 
-					is("Node has no file"));
-		}
-		try {
 			BSC1.getFile(sn, null);
 			fail("called get file w/ null arg");
 		} catch (NullPointerException ioe) {
@@ -764,7 +732,7 @@ public class ShockTests {
 		}
 		sn.delete();
 		
-		sn = addNode(BSC1, "Been shopping? No, I've been shopping", 27, "filename",
+		sn = addNode(BSC1, "Been shopping? No, I've been shopping", 37, "filename",
 				null);
 		BSC1.deleteNode(sn.getId());
 		try {
@@ -847,7 +815,7 @@ public class ShockTests {
 	public void copyNode() throws Exception {
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		final ShockNode sn = addNode(BSC1, content, 43, name, "text");
+		final ShockNode sn = addNode(BSC1, content, 39, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.WRITE);
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.DELETE);
@@ -874,7 +842,7 @@ public class ShockTests {
 		// don't repeat tests from copyNode()
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		final ShockNode sn = addNode(BSC1, content, 43, name, "text");
+		final ShockNode sn = addNode(BSC1, content, 39, name, "text");
 		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
 		final ShockNode copy = BSC2.copyNode(sn.getId(), true);
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(false));
@@ -896,7 +864,7 @@ public class ShockTests {
 		// don't repeat tests from copyNode()
 		String content = "Been\n shopping? No,\n I've been shopping";
 		String name = "apistonengine.recipe";
-		final ShockNode sn = addNode(BSC1, content, 43, name, "text");
+		final ShockNode sn = addNode(BSC1, content, 39, name, "text");
 		final ShockNode copy = BSC1.copyNode(sn.getId(), true);
 		assertThat("nodes are the same", sn.getId().equals(copy.getId()), is(true));
 		final ShockACL acl = copy.getACLs();
@@ -985,9 +953,9 @@ public class ShockTests {
 		assertThat("node set private", sn.getACLs().isPublicallyReadable(),
 				is(false));
 		
-		List<ShockACLType> singleAcls = Arrays.asList(ShockACLType.READ,
+		final List<ShockACLType> singleAcls = Arrays.asList(ShockACLType.READ,
 				ShockACLType.WRITE, ShockACLType.DELETE);
-		for (ShockACLType aclType: singleAcls) {
+		for (final ShockACLType aclType: singleAcls) {
 			failAddAcl(BSC1, null, Arrays.asList(USER2), aclType,
 					new NullPointerException("id cannot be null"));
 			
@@ -1045,13 +1013,19 @@ public class ShockTests {
 					new NullPointerException("aclType cannot be null"));
 
 			String acl = aclType.getType() + " acl";
+			final List<ShockUserId> expectedAddedUsers = new LinkedList<>();
+			expectedAddedUsers.add(USER1_SID);
+			if (aclType == ShockACLType.READ) {
+				// the blobstore silently ignores write and delete acl requests
+				expectedAddedUsers.add(USER2_SID);
+			}
 			
 			ShockACL retacl = BSC1.addToNodeAcl(sn.getId(),
 					Arrays.asList(USER2), aclType);
 			assertThat("added user to " + acl, getAcls(retacl, aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
+					is(expectedAddedUsers));
 			assertThat("added user to " + acl, getAcls(BSC1, sn.getId(), aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
+					is(expectedAddedUsers));
 			assertThat("node is private", retacl.isPublicallyReadable(),
 					is(false));
 			
@@ -1066,9 +1040,9 @@ public class ShockTests {
 			
 			retacl = sn.addToNodeAcl(Arrays.asList(USER2), aclType);
 			assertThat("added user to " + acl, getAcls(retacl, aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
+					is(expectedAddedUsers));
 			assertThat("added user to " + acl, getAcls(sn, aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
+					is(expectedAddedUsers));
 			assertThat("node is private", retacl.isPublicallyReadable(),
 					is(false));
 			
@@ -1127,62 +1101,22 @@ public class ShockTests {
 		sn.removeFromNodeAcl(Arrays.asList(USER2),
 				ShockACLType.READ);
 		
-		
-		retacl = BSC1.addToNodeAcl(sn.getId(),
-				Arrays.asList(USER2), ShockACLType.ALL);
-		assertThat("node is private", retacl.isPublicallyReadable(),
-				is(false));
-		for (ShockACLType aclType: singleAcls) {
-			assertThat("added user to " + aclType.getType() + " acl",
-					getAcls(retacl, aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
-			assertThat("added user to " + aclType.getType() + " acl",
-					getAcls(BSC1, sn.getId(), aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
-		}
-		retacl = BSC1.removeFromNodeAcl(sn.getId(),
-				Arrays.asList(USER2), ShockACLType.ALL);
-		assertThat("node is private", retacl.isPublicallyReadable(),
-				is(false));
-		for (ShockACLType aclType: singleAcls) {
-			assertThat("removed user from " + aclType.getType() + " acl",
-					getAcls(retacl, aclType),
-					is(Arrays.asList(USER1_SID)));
-			assertThat("removed user from " + aclType.getType() + " acl",
-					getAcls(BSC1, sn.getId(), aclType),
-					is(Arrays.asList(USER1_SID)));
-		}
-		retacl = sn.addToNodeAcl(Arrays.asList(USER2),
-				ShockACLType.ALL);
-		assertThat("node is private", retacl.isPublicallyReadable(),
-				is(false));
-		for (ShockACLType aclType: singleAcls) {
-			assertThat("added user to " + aclType.getType() + " acl",
-					getAcls(retacl, aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
-			assertThat("added user to " + aclType.getType() + " acl",
-					getAcls(BSC1, sn.getId(), aclType),
-					is(Arrays.asList(USER1_SID, USER2_SID)));
-		}
-		retacl = sn.removeFromNodeAcl(Arrays.asList(USER2),
-				ShockACLType.ALL);
-		assertThat("node is private", retacl.isPublicallyReadable(),
-				is(false));
-		for (ShockACLType aclType: singleAcls) {
-			assertThat("removed user from " + aclType.getType() + " acl",
-					getAcls(retacl, aclType),
-					is(Arrays.asList(USER1_SID)));
-			assertThat("removed user from " + aclType.getType() + " acl",
-					getAcls(BSC1, sn.getId(), aclType),
-					is(Arrays.asList(USER1_SID)));
-		}
+		// blobstore doesn't accept the `all` acl
+		failAddAcl(BSC1, sn.getId(), Arrays.asList(USER2), ShockACLType.ALL,
+				new ShockHttpException(400, "Invalid acl type"));
+		failRemoveAcl(BSC1, sn.getId(), Arrays.asList(USER2), ShockACLType.ALL,
+				new ShockHttpException(400, "Invalid acl type"));
+		failAddAcl(sn, Arrays.asList(USER2), ShockACLType.ALL,
+				new ShockHttpException(400, "Invalid acl type"));
+		failRemoveAcl(sn, Arrays.asList(USER2), ShockACLType.ALL,
+				new ShockHttpException(400, "Invalid acl type"));
 		
 		String failAddErr =
 				"Users that are not node owners can only delete themselves from ACLs.";
 		failAddAcl(BSC2, sn.getId(), Arrays.asList(USER2),
-				ShockACLType.ALL,
+				ShockACLType.READ,
 				new ShockIllegalShareException(400, failAddErr));
-		failAddAcl(sn2, Arrays.asList(USER2), ShockACLType.ALL,
+		failAddAcl(sn2, Arrays.asList(USER2), ShockACLType.READ,
 				new ShockIllegalShareException(400, failAddErr));
 		failSetPubliclyReadable(BSC2, sn.getId(), true,
 				new ShockIllegalShareException(400, failAddErr));
@@ -1190,32 +1124,21 @@ public class ShockTests {
 				new ShockIllegalShareException(400, failAddErr));
 		
 		// test removing self from ACLs
-		sn.addToNodeAcl(Arrays.asList(USER2),
-				ShockACLType.ALL);
-		for (ShockACLType acltype: singleAcls) {
-			ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
-					Arrays.asList(USER2), acltype);
-			assertThat("removed user from " + acltype.getType() + " acl",
-					getAcls(newacl, acltype),
-					is(Arrays.asList(USER1_SID)));
-			assertThat("removed user from " + acltype.getType() + " acl",
-					getAcls(BSC1, sn.getId(), acltype),
-					is(Arrays.asList(USER1_SID)));
-		}
-		sn.addToNodeAcl(Arrays.asList(USER2),
-				ShockACLType.ALL);
+		sn.addToNodeAcl(Arrays.asList(USER2), ShockACLType.READ);
+		final ShockACLType acltype = ShockACLType.READ;
 		ShockACL newacl = BSC2.removeFromNodeAcl(sn.getId(),
-				Arrays.asList(USER2), ShockACLType.ALL);
-		for (ShockACLType acltype: singleAcls) {
-			assertThat("removed user from " + acltype.getType() + " acl",
-					getAcls(newacl, acltype),
-					is(Arrays.asList(USER1_SID)));
-		}
+				Arrays.asList(USER2), acltype);
+		assertThat("removed user from " + acltype.getType() + " acl",
+				getAcls(newacl, acltype),
+				is(Arrays.asList(USER1_SID)));
+		assertThat("removed user from " + acltype.getType() + " acl",
+				getAcls(BSC1, sn.getId(), acltype),
+				is(Arrays.asList(USER1_SID)));
 		
 		ShockNodeId id = sn.getId();
 		sn.delete();
 		failAddAcl(BSC1, id, Arrays.asList(USER2),
-				ShockACLType.ALL, new ShockNoNodeException(
+				ShockACLType.READ, new ShockNoNodeException(
 						404, "Node not found"));
 		failSetPubliclyReadable(BSC1, id, false, new ShockNoNodeException(
 				404, "Node not found"));
@@ -1352,27 +1275,6 @@ public class ShockTests {
 			assertThat("correct code", aue.getHttpCode(), is(401));
 		}
 		return sn;
-	}
-	
-	@Test
-	public void version() throws Exception {
-		ShockNode sn = BSC1.addNode(getIS(), 1, "f", null);
-		sn.getVersion().getVersion(); //not much else to do here
-		List<String> badMD5s = Arrays.asList("fe90c05e51aa22e53daec604c815962g3",
-				"e90c05e51aa22e53daec604c815962f", "e90c05e51aa-2e53daec604c815962f3",
-				"e90c05e51aa22e53daec604c815962f31");
-		for (String md5: badMD5s) {
-			try {
-				new ShockVersionStamp(md5);
-				fail("Version stamp accepted invalid version string");
-			} catch (IllegalArgumentException iae) {
-				assertThat("Bad exception message", iae.getLocalizedMessage(),
-						is("version must be an md5 string"));
-			}
-		}
-		BSC1.deleteNode(sn.getId());
-		//will throw errors if doesn't accept md5
-		new ShockVersionStamp("e90c05e51aa22e53daec604c815962f3");
 	}
 	
 	@Test

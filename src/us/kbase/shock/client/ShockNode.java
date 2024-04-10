@@ -37,7 +37,7 @@ public class ShockNode extends ShockData {
 	@JsonProperty("file")
 	private ShockFileInformation file;
 	private ShockNodeId id;
-	private ShockVersionStamp version;
+	private String format;
 	@JsonIgnore
 	private BasicShockClient client;
 	@JsonIgnore
@@ -174,6 +174,19 @@ public class ShockNode extends ShockData {
 	}
 	
 	/**
+	 * Get the file format.
+	 * @return the format of the file, or <code>null</code> if the shock node has no file or 
+	 * no format was provided.
+	 */
+	public String getFormat() {
+		checkDeleted();
+		if (format == "") {
+			return null;
+		}
+		return format;
+	}
+	
+	/**
 	 * Get the id of this node.
 	 * @return this node's id.
 	 */
@@ -182,21 +195,12 @@ public class ShockNode extends ShockData {
 		return id;
 	}
 	
-	/**
-	 * Get the version of this node.
-	 * @return this node's current version.
-	 */
-	public ShockVersionStamp getVersion() {
-		checkDeleted();
-		return version;
-	}
-	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#toString()
 	 */
 	@Override
 	public String toString() {
-		return "ShockNode [file=" + file + ", id=" + id + ", version=" + version + ", deleted=" +
-				deleted + "]";
+		return "ShockNode [file=" + file + ", id=" + id + ", format=" + format +
+				", deleted=" + deleted + "]";
 	}
 }

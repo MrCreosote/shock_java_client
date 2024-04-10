@@ -24,8 +24,10 @@ jobs:
         include:
           - java: '8'
             mongo: 'mongodb-linux-x86_64-3.6.13'
+            minio: '2019-05-23T00-29-34Z'
           - java: '11'
             mongo: 'mongodb-linux-x86_64-3.6.13'
+            minio: '2019-05-23T00-29-34Z'
 
     steps:
       - uses: actions/checkout@v3
@@ -41,9 +43,6 @@ jobs:
         run: |
           export HOMEDIR=`pwd`
 
-          # set up shock
-          export SHOCKEXE=$HOMEDIR/shock_builds/kbase_fork/160815_e9f0e1618e265042bf5cb96429995b5e6ec0a06a/shock-server
-
           # move to parent dir of homedir to install binaries etc
           cd ..
           
@@ -51,17 +50,28 @@ jobs:
           git clone https://github.com/kbase/jars
           export JARSDIR=$(pwd)/jars/lib/jars/
 
+          # set up blobstore
+          wget -q -O blobstore https://github.com/kbase/blobstore/releases/download/v0.1.2/blobstore_linux_amd64
+          chmod a+x blobstore
+          export BLOBEXE=$(pwd)/blobstore
+
           # set up mongo
           wget -q http://fastdl.mongodb.org/linux/${{matrix.mongo}}.tgz
           tar xfz ${{matrix.mongo}}.tgz
           export MONGOD=`pwd`/${{matrix.mongo}}/bin/mongod
+
+          # set up minio
+          export MINIO=$HOMEDIR/test_dependencies/minio/${{matrix.minio}}/minio
+          gunzip $MINIO.gz 
+          chmod a+x $MINIO
 
           # set up test config
           cd $HOMEDIR
           cp test.cfg.example test.cfg
           sed -i "s#^test.jars.dir.*#test.jars.dir=$JARSDIR#" test.cfg
           sed -i "s#^test.mongo.exe.*#test.mongo.exe=$MONGOD#" test.cfg
-          sed -i "s#^test.shock.exe.*#test.shock.exe=$SHOCKEXE#" test.cfg
+          sed -i "s#^test.blobstore.exe.*#test.blobstore.exe=$BLOBEXE#" test.cfg
+          sed -i "s#^test.minio.exe.*#test.minio.exe=$MINIO#" test.cfg
           cat test.cfg
 
       - name: Run tests
