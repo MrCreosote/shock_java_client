@@ -3,13 +3,13 @@ package us.kbase.test.shock.client;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import us.kbase.auth.AuthConfig;
 import us.kbase.auth.AuthToken;
-import us.kbase.auth.ConfigurableAuthService;
+import us.kbase.auth.client.AuthClient;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockACL;
 import us.kbase.shock.client.ShockACLType;
@@ -22,10 +22,8 @@ public class TryShock {
 	 * @throws Exception if an exception occurs.
 	 */
 	public static void main(String[] args) throws Exception {
-		final ConfigurableAuthService auth = new ConfigurableAuthService(new AuthConfig()
-				.withKBaseAuthServerURL(new URL(
-						"https://appdev.kbase.us/services/auth/api/legacy/KBase/Sessions/Login")));
-		final AuthToken t = auth.validateToken(args[0]);
+		final AuthToken t = AuthClient.from(new URI("https://appdev.kbase.us/services/auth"))
+				.validateToken(args[0]);
 		final BasicShockClient c = new BasicShockClient(
 				new URL("https://appdev.kbase.us/services/shock-api"), t);
 		System.out.println(c.getShockVersion()); // this is not actually the blobstore version

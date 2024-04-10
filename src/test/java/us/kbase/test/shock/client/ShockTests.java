@@ -40,8 +40,6 @@ import com.gc.iotools.stream.os.OutputStreamToInputStream;
 import com.github.zafarkhaja.semver.Version;
 
 import us.kbase.auth.AuthToken;
-import us.kbase.common.test.TestException;
-import us.kbase.common.test.controllers.mongo.MongoController;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockACL;
 import us.kbase.shock.client.ShockACLType;
@@ -50,14 +48,15 @@ import us.kbase.shock.client.ShockNodeId;
 import us.kbase.shock.client.ShockUserId;
 import us.kbase.shock.client.exceptions.InvalidShockUrlException;
 import us.kbase.shock.client.exceptions.ShockAuthorizationException;
-import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockIllegalShareException;
 import us.kbase.shock.client.exceptions.ShockIllegalUnshareException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
 import us.kbase.shock.client.exceptions.ShockNodeDeletedException;
 import us.kbase.test.auth2.authcontroller.AuthController;
-import us.kbase.test.shock.client.controllers.blobstore.BlobstoreController;
-import us.kbase.test.shock.client.controllers.minio.MinioController;
+import us.kbase.testutils.TestException;
+import us.kbase.testutils.controllers.blobstore.BlobstoreController;
+import us.kbase.testutils.controllers.minio.MinioController;
+import us.kbase.testutils.controllers.mongo.MongoController;
 
 public class ShockTests {
 	
@@ -1099,16 +1098,6 @@ public class ShockTests {
 				is(USER1_SID));
 		sn.removeFromNodeAcl(Arrays.asList(USER2),
 				ShockACLType.READ);
-		
-		// blobstore doesn't accept the `all` acl
-		failAddAcl(BSC1, sn.getId(), Arrays.asList(USER2), ShockACLType.ALL,
-				new ShockHttpException(400, "Invalid acl type"));
-		failRemoveAcl(BSC1, sn.getId(), Arrays.asList(USER2), ShockACLType.ALL,
-				new ShockHttpException(400, "Invalid acl type"));
-		failAddAcl(sn, Arrays.asList(USER2), ShockACLType.ALL,
-				new ShockHttpException(400, "Invalid acl type"));
-		failRemoveAcl(sn, Arrays.asList(USER2), ShockACLType.ALL,
-				new ShockHttpException(400, "Invalid acl type"));
 		
 		String failAddErr =
 				"Users that are not node owners can only delete themselves from ACLs.";

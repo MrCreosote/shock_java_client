@@ -1,9 +1,9 @@
 [ShockClientTest]
 
-# Minio exe file location 
+# Minio exe file location
 test.minio.exe = minio
 
-# Blobstore exe file location 
+# Blobstore exe file location
 test.blobstore.exe = blobstore
 
 # MongoDB exe file location

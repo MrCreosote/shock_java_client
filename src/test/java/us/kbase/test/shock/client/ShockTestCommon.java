@@ -14,7 +14,7 @@ import org.ini4j.Ini;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import us.kbase.common.test.TestException;
+import us.kbase.testutils.TestException;
 
 public class ShockTestCommon {
 	

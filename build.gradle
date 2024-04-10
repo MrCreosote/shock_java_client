@@ -10,12 +10,14 @@ plugins {
 
 group = 'com.github.kbase'
 
-// TODO GRADLE update docs
-// TODO GRADLE update to jitpack built auth jar (javadoc as well)
-// TODO GRADLE publish w/ jitpack when auth jar pulled from jitpack
+var VER_AUTH2_CLIENT = "0.5.0"
 
 repositories {
 	mavenCentral()
+	maven {
+		name = "JitPack" 
+		url = 'https://jitpack.io'
+	}
 }
 
 compileJava {
@@ -49,6 +51,7 @@ javadoc {
 	options {
 		// I don't know why this isn't working, but it's not worth spending time on right now
 		links "https://docs.oracle.com/javase/8/docs/api/"
+		links "https://javadoc.jitpack.io/com/github/kbase/auth2_client_java/$VER_AUTH2_CLIENT/javadoc/"
 	}
 }
 
@@ -60,19 +63,6 @@ publishing {
 	}
 }
 
-def fromURL = { url, name ->
-	File file = new File("$buildDir/download/${name}.jar")
-	file.parentFile.mkdirs()
-	if (!file.exists()) {
-		new URL(url).withInputStream { downloadStream ->
-			file.withOutputStream { fileOut ->
-				fileOut << downloadStream
-			}
-		}
-	}
-	files(file.absolutePath)
-}
-
 dependencies {
 
 	// using older dependencies to not force upgrades on services that might not be able to
@@ -82,19 +72,10 @@ dependencies {
 	implementation 'org.apache.commons:commons-lang3:3.1'
 	implementation 'org.apache.httpcomponents:httpclient:4.5.9'
 	implementation 'org.apache.httpcomponents:httpmime:4.5.8'
-	implementation fromURL(
-		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/auth/kbase-auth-0.4.4.jar',
-		'kbase-auth-0.4.4'
-	)
+	implementation "com.github.kbase:auth2_client_java:$VER_AUTH2_CLIENT"
 
-	testImplementation fromURL(
-		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/auth2/kbase-auth2-test-shadow-all-0.7.0.jar',
-		'kbase-auth2-test-shadow-all-0.7.0'
-	)
-	testImplementation fromURL(
-		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/common/kbase-common-0.2.0.jar',
-		'kbase-common-0.2.0'
-	)
+	testImplementation 'com.github.kbase:auth2:0.7.1'
+	testImplementation 'com.github.kbase:java_test_utilities:0.1.0'
 	testImplementation 'commons-io:commons-io:2.4'
 	testImplementation 'org.ini4j:ini4j:0.5.2'
 	testImplementation 'junit:junit:4.9'
