@@ -1,5 +1,3 @@
-# DO NOT CHECK CHANGES TO THIS FILE INTO GIT!
-
 [ShockClientTest]
 
 # The path to the jars dir inside the jars repo, e.g.

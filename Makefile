@@ -34,10 +34,7 @@ build-docs: build-libs
 test: test-client
 
 test-client:
-	@# ant runs compile for the test target
-	test/cfg_to_runner.py $(SHOCK-CLIENT-JAR) $(TESTCFG)
-	test/run_tests.sh
-	
+	ant test -Dcompile.jarfile=$(SHOCK-CLIENT-JAR)
 
 clean:
 	$(ANT) clean
