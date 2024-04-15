@@ -23,7 +23,6 @@ public class ShockFileInformation {
 	@JsonProperty("checksum")
 	private Map<String, String> checksum;
 	private String name;
-	private String format;
 	private long size;
 	
 	
@@ -37,18 +36,6 @@ public class ShockFileInformation {
 			return null;
 		}
 		return name;
-	}
-	
-	/**
-	 * Get the file format.
-	 * @return the format of the file, or <code>null</code> if the shock node has no file or 
-	 * no format was provided.
-	 */
-	public String getFormat() {
-		if (format == "") {
-			return null;
-		}
-		return format;
 	}
 	
 	/**
@@ -92,7 +79,7 @@ public class ShockFileInformation {
 	@Override
 	public String toString() {
 		return "ShockFileInformation [checksum=" + checksum + ", name=" +
-				getName() + ", format=" + getFormat() + ", size=" + size + "]";
+				getName() + ", size=" + size + "]";
 	}
 
 }

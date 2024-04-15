@@ -4,13 +4,14 @@
 # [path to jars repo]/lib/jars
 test.jars.dir =
 
-# Shock exe file location 
-test.shock.exe = /kb/deployment/bin/shock-server
-# Shock exe file version
-test.shock.version = 0.9.6
+# Minio exe file location 
+test.minio.exe = minio
+
+# Blobstore exe file location 
+test.blobstore.exe = blobstore
 
 # MongoDB exe file location
-test.mongo.exe = /kb/runtime/bin/mongod
+test.mongo.exe = mongod
 
 # Temp directory for various database and server files. This path cannot have
 # any system specific information (e.g. ~, $HOME, etc)

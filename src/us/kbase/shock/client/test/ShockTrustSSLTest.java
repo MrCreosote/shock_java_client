@@ -8,6 +8,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.Collections;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -15,12 +16,13 @@ import org.junit.Test;
 
 import us.kbase.auth.AuthToken;
 import us.kbase.common.test.controllers.mongo.MongoController;
-import us.kbase.common.test.controllers.shock.ShockController;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockNode;
 import us.kbase.shock.client.ShockNodeId;
 import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
+import us.kbase.shock.client.test.controllers.blobstore.BlobstoreController;
+import us.kbase.shock.client.test.controllers.minio.MinioController;
 import us.kbase.test.auth2.authcontroller.AuthController;
 
 public class ShockTrustSSLTest {
@@ -35,8 +37,9 @@ public class ShockTrustSSLTest {
 	 */
 	
 	private static MongoController MONGO;
+	private static MinioController MINIO;
+	private static BlobstoreController BLOB;
 	private static AuthController AUTH;
-	private static ShockController SHOCK;
 	
 	private static final String USER1 = "user1";
 	private static AuthToken TOKEN;
@@ -48,6 +51,17 @@ public class ShockTrustSSLTest {
 		MONGO = new MongoController(ShockTestCommon.getMongoExe(),
 				Paths.get(ShockTestCommon.getTempDir()));
 		System.out.println("Using Mongo temp dir " + MONGO.getTempDir());
+		final String mongohost = "localhost:" + MONGO.getServerPort();
+
+		final String minioUser = "s3key";
+		final String minioKey = "supersecretkey";
+		MINIO = new MinioController(
+				ShockTestCommon.getMinioExe(),
+				minioUser,
+				minioKey,
+				Paths.get(ShockTestCommon.getTempDir())
+				);
+		System.out.println("Using Minio temp dir " + MINIO.getTempDir());
 		
 		AUTH = new AuthController(
 				ShockTestCommon.getJarsDir(),
@@ -60,34 +74,33 @@ public class ShockTrustSSLTest {
 		final String token1 = ShockTestCommon.createLoginToken(authURL, USER1);
 		TOKEN = new AuthToken(token1, USER1);
 		
-		System.out.println("Passing version " +
-				ShockTestCommon.getShockVersion() + " to Shock controller");
-		SHOCK = new ShockController(
-				ShockTestCommon.getShockExe(),
-				ShockTestCommon.getShockVersion(),
+		BLOB = new BlobstoreController(
+				ShockTestCommon.getBlobstoreExe(),
 				Paths.get(ShockTestCommon.getTempDir()),
-				"***---fakeuser---***",
-				"localhost:" + MONGO.getServerPort(),
-				"ShockTests_ShockDB",
-				"foo",
-				"foo",
-				new URL(authURL.toString() + "/api/legacy/globus"));
-		System.out.println("Shock controller registered version: "
-				+ SHOCK.getVersion());
-		if (SHOCK.getVersion() == null) {
-			System.out.println(
-					"Unregistered version - Shock may not start correctly");
-		}
-		System.out.println("Using Shock temp dir " + SHOCK.getTempDir());
+				mongohost,
+				ShockTests.class.getSimpleName() + "_blobstore_test",
+				"localhost:" + MINIO.getServerPort(),
+				"blobstore",
+				minioUser,
+				minioKey,
+				"us-west-1",
+				authURL,
+				Collections.emptyList());
+		final URL blobURL = new URL("http://localhost:" + BLOB.getPort());
+		System.out.println("started blobstore at " + blobURL);
+		System.out.println("Using Blobstore temp dir " + BLOB.getTempDir());
 		
-		URL url = new URL("http://localhost:" + SHOCK.getServerPort());
+		URL url = new URL("http://localhost:" + BLOB.getPort());
 		System.out.println("Testing shock clients pointed at: " + url);
 	}
 	
 	@AfterClass
 	public static void tearDownClass() throws Exception {
-		if (SHOCK != null) {
-			SHOCK.destroy(ShockTestCommon.getDeleteTempFiles());
+		if (BLOB != null) {
+			BLOB.destroy(ShockTestCommon.getDeleteTempFiles());
+		}
+		if (MINIO != null) {
+			MINIO.destroy(ShockTestCommon.getDeleteTempFiles());
 		}
 		if (AUTH != null) {
 			AUTH.destroy(ShockTestCommon.getDeleteTempFiles());
@@ -104,7 +117,7 @@ public class ShockTrustSSLTest {
 		//although, dear reader, you are welcome to do so and it'd be much
 		//appreciated
 		BasicShockClient bsc = new BasicShockClient(
-				new URL("http://localhost:" + SHOCK.getServerPort()),
+				new URL("http://localhost:" + BLOB.getPort()),
 				TOKEN, true);
 		//also not testing the tokenless constructor since would require 
 		//spinning up another shock server that writable w/o auth, and that
