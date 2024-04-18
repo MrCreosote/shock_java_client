@@ -6,6 +6,7 @@ BACKWARD INCOMPATIBILIES:
 - Changes to make the client fully compatible with the Blobstore
   - getFormat() has been moved from ShockFileInformation to ShockNode.
   - getVersion() has been removed from ShockNode.
+- Build system has been switched from Make/Ant to Gradle.
 
 VERSION: 0.1.0 (Released 6/13/2019)
 -----------------------------------
