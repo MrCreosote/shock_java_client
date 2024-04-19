@@ -1,4 +1,4 @@
-package us.kbase.shock.client.test.controllers.blobstore;
+package us.kbase.test.shock.client.controllers.blobstore;
 
 import static us.kbase.common.test.controllers.ControllerCommon.checkExe;
 import static us.kbase.common.test.controllers.ControllerCommon.findFreePort;
