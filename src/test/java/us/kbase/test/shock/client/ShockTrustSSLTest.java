@@ -64,7 +64,6 @@ public class ShockTrustSSLTest {
 		System.out.println("Using Minio temp dir " + MINIO.getTempDir());
 		
 		AUTH = new AuthController(
-				ShockTestCommon.getJarsDir(),
 				"localhost:" + MONGO.getServerPort(),
 				"test_" + ShockTests.class.getSimpleName(),
 				Paths.get(ShockTestCommon.getTempDir()));
