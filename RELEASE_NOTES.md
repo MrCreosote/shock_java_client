@@ -1,4 +1,4 @@
-## VERSION 0.2.0 (Released TDB)
+## VERSION 0.2.0 (Released 4/25/2024)
 
 BACKWARD INCOMPATIBILIES:
 

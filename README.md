@@ -12,8 +12,8 @@ streaming file up/download, and viewing and modifying ACLs.
 
 ## Including the client in your build
 
-See https://jitpack.io/ for instructions on how to include JitPack built dependencies in your
-build.
+See https://jitpack.io/#kbase/shock_java_client for instructions on how to include JitPack
+built dependencies in your build.
 
 ## JavaDoc
 
