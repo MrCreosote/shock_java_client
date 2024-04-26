@@ -12,8 +12,7 @@ public enum ShockACLType {
 	READ ("read"),
 	WRITE ("write"),
 	OWNER ("owner"),
-	DELETE ("delete"),
-	ALL ("all");
+	DELETE ("delete");
 	
 	private final String type;
 	

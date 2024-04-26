@@ -15,15 +15,15 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import us.kbase.auth.AuthToken;
-import us.kbase.common.test.controllers.mongo.MongoController;
 import us.kbase.shock.client.BasicShockClient;
 import us.kbase.shock.client.ShockNode;
 import us.kbase.shock.client.ShockNodeId;
 import us.kbase.shock.client.exceptions.ShockHttpException;
 import us.kbase.shock.client.exceptions.ShockNoNodeException;
 import us.kbase.test.auth2.authcontroller.AuthController;
-import us.kbase.test.shock.client.controllers.blobstore.BlobstoreController;
-import us.kbase.test.shock.client.controllers.minio.MinioController;
+import us.kbase.testutils.controllers.blobstore.BlobstoreController;
+import us.kbase.testutils.controllers.minio.MinioController;
+import us.kbase.testutils.controllers.mongo.MongoController;
 
 public class ShockTrustSSLTest {
 	
